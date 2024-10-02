@@ -1,0 +1,110 @@
+<?php?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Sign Up - ArtLink Entertainment</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="art.css"> <!-- Link to your external CSS file -->
+    <script type="text/javascript" src="signup.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
+            height: 100vh;
+            display: flex;
+            flex-direction: column; /* Allow stacking of nav and signup container */
+        }
+        .signup-container {
+            max-width: 400px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            margin: auto; /* Center the signup container */
+            flex-grow: 1; /* Allow signup container to grow */
+        }
+
+        h1 {
+            color: #3e3e3e; /* Dark gray for the title */
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            color: #3e3e3e; /* Dark gray for labels */
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="email"], input[type="password"], select {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border: 2px solid #ff3d00; /* Orange border */
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
+            border-color: #ff9a00; /* Lighter orange on focus */
+            outline: none;
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
+            color: white;
+            padding: 14px 20px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
+        <label class="logo">ArtLink Entertainment</label>
+        <ul>
+            <li><a href="index.php">HOME</a></li>
+            <li><a href="about.php">ABOUT</a></li>
+            <li><a href="signup.php">SIGN UP</a></li>
+            <li><a href="login.php">LOGIN</a></li>
+        </ul>
+    </nav>
+
+    <div class="signup-container">
+        <h1>Create Your Account</h1>
+        <form onsubmit="handleSubmit(event)" method="POST" action="process-signup.php">
+            <label for="role">I am signing up as:</label>
+            <select id="role" name="role" required>
+                <option value="" disabled selected>Select your role</option>
+                <option value="artist">Artist</option>
+                <option value="audience">Audience</option>
+                <option value="institution">Artistic Institution</option>
+            </select>
+
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+
+            <button type="submit">Sign Up</button>
+        </form>
+    </div>
+</body>
+</html>
