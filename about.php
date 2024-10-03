@@ -6,7 +6,6 @@
     <title>Artist</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="art.css">
-    <script type="text/javascript" src="link.js"></script>
     <style>
         body, html {
             margin: 0;
@@ -29,55 +28,6 @@
             background: no-repeat;
             background-size: cover;
         }
-        nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: gold;
-            height: 90px;
-            width: 100%;
-            padding: 0 20px;
-        }
-
-        img.logo {
-            height: 60px;
-            margin-right: 15px;
-        }
-
-        label.logo {
-            color: rgb(204, 46, 46);
-            font-size: 45px;
-            line-height: 10px;
-            padding: 0;
-            font-weight: bold;
-            justify-content: center;
-            text-align: center;
-        }
-
-        nav ul {
-            display: flex;
-            justify-content: end;
-            margin-right: 0;
-            margin-bottom: 0;
-        }
-
-        nav ul li {
-            display: inline-block;
-            margin: 5px;
-        }
-
-        nav ul li a {
-            background-color: gold;
-            font-size: 15px;
-            color: black;
-            text-decoration: none;
-            padding: 10px;
-        }
-
-        nav ul li a:hover {
-            text-decoration: underline;
-        }
-
         main {
             position: relative;
             z-index: 1;
