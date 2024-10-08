@@ -1,4 +1,6 @@
-<?php?>
+<?php 
+session_start(); // Start session to access session variables
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +8,7 @@
     <title>Login - ArtLink Entertainment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="art.css">
-    <script type="text/javascript" src="login.js"></script> <!-- Link to the JavaScript file -->
+    <script type="text/javascript" src="login.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,8 +19,7 @@
             display: flex;
             flex-direction: column; /* Allow stacking of nav and login container */
         }
-
-
+        
         .login-container {
             max-width: 400px;
             padding: 40px;
@@ -26,18 +27,18 @@
             border-radius: 20px;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
-            margin: auto; /* Center the login container */
+            margin: auto;
             flex-grow: 1; /* Allow login container to grow */
         }
 
         h1 {
-            color: #3e3e3e; /* Dark gray for the title */
+            color: #3e3e3e;
             text-align: center;
             margin-bottom: 20px;
         }
 
         label {
-            color: #3e3e3e; /* Dark gray for labels */
+            color: #3e3e3e;
             font-weight: bold;
         }
 
@@ -76,6 +77,12 @@
             text-align: center;
             margin-top: 10px;
         }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -92,7 +99,18 @@
 
     <div class="login-container">
         <h1>Login to Your Account</h1>
-        <form onsubmit="handleLogin(event)" method="POST" action="process-login.php">
+        
+        <!-- Display error message if there is any -->
+        <?php if(isset($_SESSION['error'])): ?>
+            <div class="error-message">
+                <?php 
+                echo $_SESSION['error'];
+                unset($_SESSION['error']); // Clear error after displaying
+                ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST" action="process-login.php">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" placeholder="Enter your username" required>
 

@@ -12,24 +12,15 @@ function handleLogin(event) {
         return;
     }
 
-    // Example of a simple check (this is for demo purposes)
-    // Replace this with your actual login logic (AJAX, Fetch API, etc.)
-    if (username === "admin" && password === "password123") {
-        alert("Login successful!");
-        // Redirect to a dashboard or homepage
-        window.location.href = "dashboard.php"; // Change to your actual dashboard page
-    } else {
-        alert("Invalid username or password. Please try again.");
-    }
+    // Create form data
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
 
-    // If using AJAX or Fetch API, you could do the following:
-    /*
+    // Send login request to the server using Fetch API
     fetch('process-login.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
+        body: formData,  // Sending form data
     })
     .then(response => response.json())
     .then(data => {
@@ -37,12 +28,11 @@ function handleLogin(event) {
             // Redirect to dashboard
             window.location.href = "dashboard.php"; // Change to your actual dashboard page
         } else {
-            alert(data.message);
+            alert(data.message); // Show error message from the server
         }
     })
     .catch((error) => {
         console.error('Error:', error);
         alert("An error occurred. Please try again later.");
     });
-    */
 }

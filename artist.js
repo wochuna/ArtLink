@@ -1,28 +1,34 @@
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const artistId = document.getElementById('artist_id').value.trim();
-        const title = document.getElementById('title').value.trim();
-        const description = document.getElementById('description').value.trim();
-        const artworkImage = document.getElementById('artwork_image').files[0];
+// Profile Picture Preview
+document.getElementById('profile_picture').addEventListener('change', function() {
+    const file = this.files[0];
+    const reader = new FileReader();
 
-        if (!artistId || !title || !description || !artworkImage) {
-            alert('Please fill in all required fields.');
-            e.preventDefault(); // Prevent form submission
-        }
-    });
+    reader.onload = function(e) {
+        const profilePreview = document.getElementById('profile_preview');
+        profilePreview.src = e.target.result;
+        profilePreview.style.display = 'block';
+    };
 
-    document.getElementById('artwork_image').addEventListener('change', function() {
-        const file = this.files[0];
-        const preview = document.createElement('img');
-        const reader = new FileReader();
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+});
 
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.maxWidth = '200px'; // Set max width for preview
-            document.querySelector('.upload-container').appendChild(preview);
-        };
+// Artwork Image Preview
+document.getElementById('artwork_image').addEventListener('change', function() {
+    const file = this.files[0];
+    const reader = new FileReader();
 
-        if (file) {
-            reader.readAsDataURL(file);
-        }
-    });
+    reader.onload = function(e) {
+        const artworkPreview = document.getElementById('artwork_preview');
+        artworkPreview.src = e.target.result;
+        artworkPreview.style.display = 'block';
+    };
+
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+});
+
+
 
