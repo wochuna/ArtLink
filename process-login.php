@@ -37,7 +37,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (password_verify($password, $row['password'])) {
             // Login successful, set session variables
             $_SESSION['username'] = $row['username'];
-            header("Location: dashboard.php"); // Redirect to dashboard or home
+            $_SESSION['id'] = $row['id']; // Set the user 'id' in session
+            $_SESSION['role'] = $row['role']; // Assuming 'role' column exists in the users table
+
+            // Redirect based on user role
+            if ($row['role'] === 'artist') {
+                header("Location: artist.php");
+            } elseif ($row['role'] === 'audience') {
+                header("Location: audience.php");
+            } elseif ($row['role'] === 'institution') {
+                header("Location: institution.php");
+            } else {
+                // Default redirection if role is unknown
+                header("Location: default.php");
+            }
             exit();
         } else {
             // Invalid password
