@@ -59,109 +59,146 @@ $conn->close();
     <link rel="stylesheet" href="art.css">
     <script type="text/javascript" src="artist.js"></script>
     <style>
-        /* Global styles */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
+    /* Global styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
 
-        .container {
-            display: flex;
-            height: 100vh;
-        }
+/* Container setup for sidebar and content */
+.container {
+    display: flex;
+    height: 100vh;
+}
 
-        /* Left Sidebar */
-        .sidebar {
-            width: 300px;
-            background-color: #333;
-            color: white;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-        }
+/* Left Sidebar */
+.sidebar {
+    width: 300px;
+    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Matching gradient */
+    color: white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
 
-        .sidebar a {
-            display: block;
-            color: white;
-            padding: 15px 10px;
-            text-decoration: none;
-            border-bottom: 1px solid #555;
-            transition: background-color 0.3s;
-        }
+.sidebar a {
+    display: block;
+    color: white;
+    padding: 15px 10px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s;
+}
 
-        .sidebar a:hover, .sidebar a.active {
-            background-color: #555;
-        }
+.sidebar a:hover, .sidebar a.active {
+    background: rgba(255, 255, 255, 0.2); /* Light white on hover */
+}
 
-        /* Right Content Area */
-        .content {
-            flex: 1;
-            padding: 20px;
-            background-color: white;
-            overflow-y: auto;
-        }
+/* Right Content Area */
+.content {
+    flex: 1;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.95); /* Semi-transparent white background */
+    border-radius: 20px; /* Rounded corners */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Form-style shadow */
+    margin: auto; /* Center the content vertically and horizontally */
+    overflow-y: auto;
+    max-width: 800px;
+}
 
-        .content-section {
-            display: none;
-        }
+/* Content Sections */
+.content-section {
+    display: none;
+}
 
-        .content-section.active {
-            display: block;
-        }
+.content-section.active {
+    display: block;
+}
 
-        /* Profile Section */
-        .profile-container {
-            display: flex;
-            flex-direction: column;
-            max-width: 600px;
-            margin: auto;
-        }
+/* Profile Section */
+.profile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: auto;
+    width: 100%;
+}
 
-        .profile-container img {
-            width: 150px;
-            border-radius: 50%;
-            margin-bottom: 20px;
-        }
+.profile-container img {
+    width: 150px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+}
 
-        .profile-container label {
-            font-weight: bold;
-        }
+.profile-container label {
+    font-weight: bold;
+    color: #3e3e3e;
+}
 
-        .profile-container input,
-        .profile-container textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
+.profile-container input,
+.profile-container textarea {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 10px 0;
+    border: 2px solid #ff3d00; /* Orange border */
+    border-radius: 10px;
+    box-sizing: border-box;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
 
-        .profile-container input[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
+.profile-container input:focus, 
+.profile-container textarea:focus {
+    border-color: #ff9a00; /* Lighter orange on focus */
+    outline: none;
+}
 
-        .profile-container input[type="submit"]:hover {
-            background-color: #45a049;
-        }
-    </style>
+/* Button Styles */
+.profile-container button,
+.profile-container input[type="submit"] {
+    background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
+    color: white;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.profile-container button:hover,
+.profile-container input[type="submit"]:hover {
+    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .content {
+        max-width: 100%;
+        padding: 20px;
+    }
+}
+</style>
 </head>
 <body>
+
+<!-- Navigation Bar (assuming you have this in your existing setup) -->
 <nav>
-        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
-        <label class="logo">ArtLink Entertainment</label>
-        <ul>
-            <li><a href="index.php">HOME</a></li>
-            <li><a href="about.php">ABOUT</a></li>
-            <li><a href="signup.php">SIGN UP</a></li>
-            <li><a href="login.php">LOGIN</a></li>
-        </ul>
-    </nav>
+    <!-- Your existing navigation bar content -->
+</nav>
 
 <div class="container">
     <!-- Sidebar -->
@@ -180,6 +217,8 @@ $conn->close();
             <div class="profile-container">
                 <!-- Profile Picture -->
                 <img src="uploads/<?php echo $profile_picture; ?>" alt="Profile Picture" />
+                <button>Change Profile Picture</button> <!-- Button to change profile picture -->
+                
                 <label for="username">Username:</label>
                 <input type="text" name="username" id="username" value="<?php echo $username; ?>" required>
                 
@@ -199,8 +238,8 @@ $conn->close();
                 <label for="linkedin_link">LinkedIn:</label>
                 <input type="url" name="linkedin_link" id="linkedin_link" value="<?php echo $linkedin_link; ?>">
                 
-                <!-- Update Button -->
-                <input type="submit" name="update" value="Update Profile">
+                <!-- Update Profile Button -->
+                <input type="submit" name="update" value="Update Profile"> <!-- Update profile button -->
             </div>
         </div>
 
