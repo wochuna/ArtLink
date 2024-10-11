@@ -124,7 +124,7 @@ body {
 .profile-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: left;
     margin: auto;
     width: 100%;
 }
@@ -194,19 +194,26 @@ body {
 </style>
 </head>
 <body>
-
-<!-- Navigation Bar (assuming you have this in your existing setup) -->
-<nav>
-    <!-- Your existing navigation bar content -->
-</nav>
+    <nav>
+        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
+        <label class="logo">ArtLink Entertainment</label>
+        <ul>
+            <li><a href="index.php">HOME</a></li>
+            <li><a href="about.php">ABOUT</a></li>
+            <li><a href="signup.php">SIGN UP</a></li>
+            <li><a href="login.php">LOGIN</a></li>
+        </ul>
+    </nav>
 
 <div class="container">
     <!-- Sidebar -->
     <div class="sidebar">
         <a href="#" id="profile-link" class="active">Profile</a>
+        <a href="#" id="artwork-link">Artwork</a>
         <a href="#" id="collaboration-link">Collaboration</a>
         <a href="#" id="partnership-link">Partnership</a>
         <a href="#" id="messages-link">Messages</a>
+        <a href="#" id="events-link">Events</a>
     </div>
 
     <!-- Right Content Area -->
@@ -243,6 +250,13 @@ body {
             </div>
         </div>
 
+         <!-- Artwork Section -->
+         <div id="artwork-section" class="content-section">
+            <h2>Artwork</h2>
+            <p>Artwork goes here.</p>
+        </div>
+
+
         <!-- Collaboration Section -->
         <div id="collaboration-section" class="content-section">
             <h2>Collaboration</h2>
@@ -259,6 +273,12 @@ body {
         <div id="messages-section" class="content-section">
             <h2>Messages</h2>
             <p>Your messages will appear here.</p>
+            </div>
+
+            <!-- Events Section -->
+        <div id="events-section" class="content-section">
+            <h2>Events</h2>
+            <p>Your events will appear here.</p>
         </div>
     </div>
 </div>
@@ -267,6 +287,10 @@ body {
 // JavaScript to toggle content based on link clicked
 document.getElementById('profile-link').addEventListener('click', function() {
     setActiveSection('profile-section');
+});
+
+document.getElementById('artwork-link').addEventListener('click', function() {
+    setActiveSection('artwork-section');
 });
 
 document.getElementById('collaboration-link').addEventListener('click', function() {
@@ -281,6 +305,9 @@ document.getElementById('messages-link').addEventListener('click', function() {
     setActiveSection('messages-section');
 });
 
+document.getElementById('events-link').addEventListener('click', function() {
+    setActiveSection('events-section');
+});
 function setActiveSection(sectionId) {
     // Remove active class from all sections
     var sections = document.getElementsByClassName('content-section');
