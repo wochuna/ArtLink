@@ -1,59 +1,122 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
     margin: 0;
     padding: 0;
+    background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
+
+/* Container setup for sidebar and content */
 .container {
     display: flex;
-    margin: 20px;
+    height: 100vh;
 }
+
+/* Left Sidebar */
 .sidebar {
-    width: 250px;
-    background-color: #333;
-    padding: 15px;
+    width: 300px;
+    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Matching gradient */
     color: white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
 }
+
 .sidebar a {
     display: block;
     color: white;
-    padding: 10px;
+    padding: 15px 10px;
     text-decoration: none;
-    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s;
 }
-.sidebar a:hover {
-    background-color: #555;
+
+.sidebar a:hover, .sidebar a.active {
+    background: rgba(255, 255, 255, 0.2); /* Light white on hover */
 }
+
+/* Right Content Area */
 .content {
     flex: 1;
-    padding: 20px;
-    background-color: white;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.95); /* Semi-transparent white background */
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Form-style shadow */
+    margin: auto;
+    overflow-y: auto;
+    max-width: 1000px; /* Increased width for the audience content */
 }
+
+/* Artist List Styles */
 .artist-list {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
 }
+
 .artist {
-    margin: 10px;
+    margin: 15px;
     padding: 15px;
-    border: 1px solid #ddd;
-    background-color: #fafafa;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Soft shadow */
     text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
+
+.artist:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
 .artist img {
     width: 150px;
     height: 150px;
     object-fit: cover;
     border-radius: 50%;
+    margin-bottom: 15px;
+    border: 3px solid #ff9a00; /* Orange border */
 }
+
+.artist h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+/* Follow Button */
 .artist button {
-    padding: 10px 15px;
-    background-color: orange;
+    padding: 12px 20px;
+    background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
     color: white;
     border: none;
+    border-radius: 10px;
     cursor: pointer;
-    margin-top: 10px;
+    transition: background 0.3s;
 }
+
 .artist button:hover {
-    background-color: darkorange;
+    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .content {
+        max-width: 100%;
+        padding: 20px;
+    }
+
+    .artist {
+        width: 100%;
+        margin: 10px 0;
+    }
 }

@@ -1,8 +1,7 @@
 <?php 
 // Start session to track logged-in user
 session_start();
-echo "Current Session ID: " . session_id(); // Debugging line
-echo "User ID: " . (isset($_SESSION['id']) ? $_SESSION['id'] : 'Not set'); // Debugging line
+
 
 // Database connection details
 $servername = "localhost";

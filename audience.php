@@ -1,8 +1,6 @@
 <?php 
 // Start session to track logged-in user
 session_start();
-echo "Current Session ID: " . session_id(); // Debugging line
-echo "User ID: " . (isset($_SESSION['id']) ? $_SESSION['id'] : 'Not set'); // Debugging line
 
 // Database connection details
 $servername = "localhost";
@@ -67,7 +65,7 @@ if (!$artistResult) {
 <body>
 
 <nav>
-        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
+        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> 
         <label class="logo">ArtLink Entertainment</label>
         <ul>
             <li><a href="index.php">HOME</a></li>
@@ -96,7 +94,7 @@ if (!$artistResult) {
                     while ($artist = $artistResult->fetch_assoc()) {
                         ?>
                         <div class="artist">
-                            <img src="uploads/<?php echo $artist['profile_picture']; ?>" alt="Artist Picture">
+                            <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
                             <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
                             <button onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
                         </div>
@@ -133,5 +131,3 @@ if (!$artistResult) {
     </script>
 </body>
 </html>
-
-

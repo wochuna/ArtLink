@@ -73,6 +73,11 @@ session_start(); // Start session to access session variables
             background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
         }
 
+        .forgot-password-link {
+            text-align: center;
+            margin-top: 10px;
+        }
+
         .signup-link {
             text-align: center;
             margin-top: 10px;
@@ -119,8 +124,11 @@ session_start(); // Start session to access session variables
 
             <button type="submit">Login</button>
         </form>
+        <div class="forgot-password-link">
+            <a href="forgot-password.php" style="color: #ff3d00; font-weight: bold;">Forgot your password?Reset here</a>
+        </div>
         <div class="signup-link">
-            <a href="signup.php" style="color: #ff3d00; font-weight: bold;">Don't have an account? Sign Up</a>
+             <a href="signup.php" style="color: #ff3d00; font-weight: bold;">Don't have an account? Sign Up</a>
         </div>
     </div>
 </body>
