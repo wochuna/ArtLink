@@ -1,6 +1,8 @@
 <?php 
 // Start session to track logged-in user
 session_start();
+echo "Current Session ID: " . session_id(); // Debugging line
+echo "User ID: " . (isset($_SESSION['id']) ? $_SESSION['id'] : 'Not set'); // Debugging line
 
 // Database connection details
 $servername = "localhost";
@@ -22,16 +24,16 @@ if (!isset($_SESSION['id'])) {
     exit();
 }
 
-$user_id = $_SESSION['id']; // Logged in user's id
+$id = $_SESSION['id']; // Logged in user's id
 
-// Handle Follow action
+// Handle Follow action (assuming it's done via POST request)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['artist_id'])) {
     $artist_id = $_POST['artist_id'];
 
-    // Insert follow relationship into the database
-    $sql = "INSERT INTO follows (id, followed_id) VALUES (?, ?)";  // 'id' for user and 'followed_id' for artist
+    // Insert follow relationship into the fans database
+    $sql = "INSERT INTO fans (follower_id, followed_id, follow_date) VALUES (?, ?, NOW())";  
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $user_id, $artist_id);
+    $stmt->bind_param("ii", $id, $artist_id);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
@@ -42,14 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['artist_id'])) {
     exit();
 }
 
-// Fetch all artists from the database
+// Fetch all artists from the artwork database
 $sql = "SELECT u.id, u.username, a.profile_picture FROM users u
-        JOIN artwork a ON u.id = a.id";  // Joining users and artwork tables
+        JOIN artwork a ON u.id = a.id";  
 $artistResult = $conn->query($sql);
 
-// Fetch all events from the database
-$sql_events = "SELECT * FROM events";  // Correct table for events
-$eventResult = $conn->query($sql_events);
+if (!$artistResult) {
+    die("Query failed: " . $conn->error); // Debugging line
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -57,12 +60,13 @@ $eventResult = $conn->query($sql_events);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Institution Page</title>
-    <link rel="stylesheet" href="art.css">
+    <title>Audience Dashboard</title>
+    <link rel="stylesheet" href="art.css"> 
     <link rel="stylesheet" href="audience.css">
 </head>
 <body>
-    <nav>
+
+<nav>
         <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
         <label class="logo">ArtLink Entertainment</label>
         <ul>
@@ -73,93 +77,61 @@ $eventResult = $conn->query($sql_events);
         </ul>
     </nav>
 
-    <!-- Search Bar -->
-    <div class="search-bar">
-        <input type="text" id="artistSearch" placeholder="Search for artists...">
-        <button onclick="searchArtist()">Search</button>
-    </div>
+    <div class="container">
+        <!-- Sidebar for navigation -->
+        <div class="sidebar">
+            <a href="#">Profile</a>
+            <a href="#">Followed Artists</a>
+            <a href="#">Events</a>
+        </div>
 
-    <!-- Artist List -->
-    <div class="artist-list">
-        <?php
-        if ($artistResult->num_rows > 0) {
-            // Output data for each artist
-            while ($row = $artistResult->fetch_assoc()) {
-                echo '<div class="artist">';
-                echo '<img src="uploads/' . $row['profile_picture'] . '" alt="Profile Picture" class="profile-pic">';
-                echo '<span>' . $row['username'] . '</span>';
-                echo '<button class="follow-btn" data-artist-id="' . $row['id'] . '">Follow</button>';
-                echo '<button class="message-btn">Message</button>'; // Button to message artist
-                echo '</div>';
-            }
-        } else {
-            echo "No artists found.";
-        }
-        ?>
-    </div>
+        <!-- Main content area -->
+        <div class="content">
+            <h2>Browse Artists</h2>
 
-    <!-- Event Section -->
-    <div class="event-section">
-        <h2>Upcoming Events</h2>
-        <div class="events-list">
-            <?php
-            if ($eventResult->num_rows > 0) {
-                while ($row = $eventResult->fetch_assoc()) {
-                    echo '<div class="event">';
-                    echo '<h3>' . $row['event_name'] . '</h3>';
-                    echo '<p>' . $row['event_date'] . '</p>';
-                    echo '<button>Attend</button>'; // Attend event button
-                    echo '</div>';
+            <div class="artist-list">
+                <?php
+                // Display artists in a grid format
+                if ($artistResult->num_rows > 0) {
+                    while ($artist = $artistResult->fetch_assoc()) {
+                        ?>
+                        <div class="artist">
+                            <img src="uploads/<?php echo $artist['profile_picture']; ?>" alt="Artist Picture">
+                            <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
+                            <button onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
+                        </div>
+                        <?php
+                    }
+                } else {
+                    echo "No artists found.";
                 }
-            } else {
-                echo "No events found.";
-            }
-            ?>
+                ?>
+            </div>
         </div>
     </div>
 
     <script>
-    // JavaScript for search functionality
-    function searchArtist() {
-        let input = document.getElementById('artistSearch').value.toLowerCase();
-        let artists = document.getElementsByClassName('artist');
-        
-        for (let i = 0; i < artists.length; i++) {
-            let artistName = artists[i].getElementsByTagName('span')[0].innerText.toLowerCase();
-            if (artistName.includes(input)) {
-                artists[i].style.display = "";
-            } else {
-                artists[i].style.display = "none";
-            }
-        }
-    }
-
-    // JavaScript for Follow button functionality
-    document.querySelectorAll('.follow-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            let artistId = this.getAttribute('data-artist-id');
-            // Perform an AJAX request to follow the artist
-            fetch('institution.php', {  // Make sure this matches your page
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    artist_id: artistId
-                })
+    function followArtist(artistId) {
+        fetch('audience.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                artist_id: artistId
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Followed successfully!');
-                } else {
-                    alert('Failed to follow the artist.');
-                }
-            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("You are now following the artist!");
+            } else {
+                alert("Failed to follow artist: " + data.message);
+            }
         });
-    });
+    }
     </script>
 </body>
 </html>
 
-<?php $conn->close(); ?>
+

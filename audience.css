@@ -1,104 +1,59 @@
 body {
     font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
     margin: 0;
     padding: 0;
-    background: #f4f4f4;
 }
-
-.search-bar {
+.container {
     display: flex;
-    justify-content: center;
-    padding: 20px;
-    background-color: #ff9a00;
+    margin: 20px;
 }
-
-.search-bar input {
-    padding: 10px;
-    width: 300px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-.search-bar button {
-    padding: 10px 20px;
-    background-color: #ff3d00;
+.sidebar {
+    width: 250px;
+    background-color: #333;
+    padding: 15px;
     color: white;
-    border: none;
-    border-radius: 5px;
-    margin-left: 10px;
-    cursor: pointer;
 }
-
+.sidebar a {
+    display: block;
+    color: white;
+    padding: 10px;
+    text-decoration: none;
+    margin-bottom: 10px;
+}
+.sidebar a:hover {
+    background-color: #555;
+}
+.content {
+    flex: 1;
+    padding: 20px;
+    background-color: white;
+}
 .artist-list {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    padding: 20px;
 }
-
 .artist {
-    margin: 20px;
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 10px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    background-color: #fafafa;
     text-align: center;
 }
-
 .artist img {
     width: 150px;
     height: 150px;
+    object-fit: cover;
     border-radius: 50%;
-    margin-bottom: 10px;
 }
-
-.artist span {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
 .artist button {
-    padding: 10px 20px;
-    background-color: #ff3d00;
+    padding: 10px 15px;
+    background-color: orange;
     color: white;
     border: none;
-    border-radius: 5px;
     cursor: pointer;
-    margin-top: 5px;
+    margin-top: 10px;
 }
-
-.event-section {
-    padding: 20px;
-    background-color: #fff;
-    margin-top: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.event-section h2 {
-    text-align: center;
-}
-
-.events-list .event {
-    text-align: center;
-    margin-bottom: 15px;
-}
-
-.events-list .event h3 {
-    font-size: 18px;
-    color: #ff3d00;
-}
-
-.events-list .event p {
-    font-size: 14px;
-}
-
-.events-list .event button {
-    padding: 10px 20px;
-    background-color: #ff9a00;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+.artist button:hover {
+    background-color: darkorange;
 }
