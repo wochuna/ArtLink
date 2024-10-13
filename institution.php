@@ -22,16 +22,16 @@ if (!isset($_SESSION['id'])) {
     exit();
 }
 
-$audience_id = $_SESSION['id']; // Logged in user's id
+$user_id = $_SESSION['id']; // Logged in user's id
 
 // Handle Follow action
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['artist_id'])) {
     $artist_id = $_POST['artist_id'];
 
     // Insert follow relationship into the database
-    $sql = "INSERT INTO follows (audience_id, artist_id) VALUES (?, ?)";
+    $sql = "INSERT INTO follows (id, followed_id) VALUES (?, ?)";  // 'id' for user and 'followed_id' for artist
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $audience_id, $artist_id);
+    $stmt->bind_param("ii", $user_id, $artist_id);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
@@ -47,7 +47,7 @@ $sql = "SELECT id, username, profile_picture FROM artwork";
 $artistResult = $conn->query($sql);
 
 // Fetch all events from the database
-$sql_events = "SELECT * FROM artwork";
+$sql_events = "SELECT * FROM events";  // Correct table for events
 $eventResult = $conn->query($sql_events);
 ?>
 
@@ -56,12 +56,12 @@ $eventResult = $conn->query($sql_events);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audience Page</title>
+    <title>Institution Page</title>
     <link rel="stylesheet" href="art.css">
     <link rel="stylesheet" href="audience.css">
 </head>
 <body>
-<nav>
+    <nav>
         <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
         <label class="logo">ArtLink Entertainment</label>
         <ul>
@@ -138,7 +138,7 @@ $eventResult = $conn->query($sql_events);
         btn.addEventListener('click', function() {
             let artistId = this.getAttribute('data-artist-id');
             // Perform an AJAX request to follow the artist
-            fetch('your_page.php', {
+            fetch('institution.php', {  // Make sure this matches your page
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
