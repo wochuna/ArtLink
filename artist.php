@@ -46,6 +46,29 @@ if ($result->num_rows == 1) {
     exit();
 }
 
+// Handle sending messages
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
+    $receiver_id = $_POST['recipient_id'];
+    $message = $_POST['message'];
+
+    // Prepare and execute the query to insert the message
+    $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, message) VALUES (?, ?, ?)");
+    $stmt->bind_param("iis", $user_id, $recipient_id, $message);
+
+    if (!$stmt->execute()) {
+        echo "Error: " . $stmt->error;
+    }
+
+    $stmt->close();
+}
+
+// Fetch messages for the logged-in user
+$sql = "SELECT * FROM messages WHERE sender_id = ? OR recipient_id = ? ORDER BY created_at DESC";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ii", $user_id, $user_id);
+$stmt->execute();
+$messages_result = $stmt->get_result();
+
 $stmt->close();
 $conn->close();
 ?>
@@ -59,139 +82,132 @@ $conn->close();
     <link rel="stylesheet" href="art.css">
     <script type="text/javascript" src="artist.js"></script>
     <style>
-    /* Global styles */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+        /* Add your existing styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #ff9a00, #ff3d00);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-/* Container setup for sidebar and content */
-.container {
-    display: flex;
-    height: 100vh;
-}
+        .container {
+            display: flex;
+            height: 100vh;
+        }
 
-/* Left Sidebar */
-.sidebar {
-    width: 300px;
-    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Matching gradient */
-    color: white;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-}
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(45deg, #ff9a00, #ff3d00);
+            color: white;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
 
-.sidebar a {
-    display: block;
-    color: white;
-    padding: 15px 10px;
-    text-decoration: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    transition: background-color 0.3s;
-}
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 15px 10px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s;
+        }
 
-.sidebar a:hover, .sidebar a.active {
-    background: rgba(255, 255, 255, 0.2); /* Light white on hover */
-}
+        .sidebar a:hover, .sidebar a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
 
-/* Right Content Area */
-.content {
-    flex: 1;
-    padding: 40px;
-    background: rgba(255, 255, 255, 0.95); /* Semi-transparent white background */
-    border-radius: 20px; /* Rounded corners */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Form-style shadow */
-    margin: auto; /* Center the content vertically and horizontally */
-    overflow-y: auto;
-    max-width: 800px;
-}
+        .content {
+            flex: 1;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            margin: auto;
+            overflow-y: auto;
+            max-width: 800px;
+        }
 
-/* Content Sections */
-.content-section {
-    display: none;
-}
+        .content-section {
+            display: none;
+        }
 
-.content-section.active {
-    display: block;
-}
+        .content-section.active {
+            display: block;
+        }
 
-/* Profile Section */
-.profile-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: auto;
-    width: 100%;
-}
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto;
+            width: 100%;
+        }
 
-.profile-container img {
-    width: 150px;
-    border-radius: 50%;
-    margin-bottom: 20px;
-}
+        .profile-container img {
+            width: 150px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }
 
-.profile-container label {
-    font-weight: bold;
-    color: #3e3e3e;
-}
+        .profile-container label {
+            font-weight: bold;
+            color: #3e3e3e;
+        }
 
-.profile-container input,
-.profile-container textarea {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 10px 0;
-    border: 2px solid #ff3d00; /* Orange border */
-    border-radius: 10px;
-    box-sizing: border-box;
-    font-size: 16px;
-    transition: border-color 0.3s;
-}
+        .profile-container input,
+        .profile-container textarea {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border: 2px solid #ff3d00;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
 
-.profile-container input:focus, 
-.profile-container textarea:focus {
-    border-color: #ff9a00; /* Lighter orange on focus */
-    outline: none;
-}
+        .profile-container input:focus, 
+        .profile-container textarea:focus {
+            border-color: #ff9a00;
+            outline: none;
+        }
 
-/* Button Styles */
-.profile-container button,
-.profile-container input[type="submit"] {
-    background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
-    color: white;
-    padding: 14px 20px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 10px;
-}
+        .profile-container button,
+        .profile-container input[type="submit"] {
+            background: linear-gradient(45deg, #ff3d00, #ff9a00);
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
 
-.profile-container button:hover,
-.profile-container input[type="submit"]:hover {
-    background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
-}
+        .profile-container button:hover,
+        .profile-container input[type="submit"]:hover {
+            background: linear-gradient(45deg, #ff9a00, #ff3d00);
+        }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-    }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
 
-    .sidebar {
-        width: 100%;
-    }
+            .sidebar {
+                width: 100%;
+            }
 
-    .content {
-        max-width: 100%;
-        padding: 20px;
-    }
-}
-</style>
+            .content {
+                max-width: 100%;
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -256,49 +272,76 @@ body {
 
         <!-- Collaboration Section -->
         <div id="collaboration-section" class="content-section">
-            <h2>Collaboration</h2>
-            <p>Details about collaborations go here.</p>
+            <h2>Collaboration Opportunities</h2>
+            <!-- Add collaboration opportunities content here -->
         </div>
 
         <!-- Partnership Section -->
         <div id="partnership-section" class="content-section">
-            <h2>Partnership</h2>
-            <p>Details about partnerships go here.</p>
+            <h2>Partnership Opportunities</h2>
+            <!-- Add partnership opportunities content here -->
         </div>
 
         <!-- Messages Section -->
         <div id="messages-section" class="content-section">
             <h2>Messages</h2>
-            <p>Your messages will appear here.</p>
+
+            <!-- Form to send messages -->
+            <form action="" method="POST">
+                <label for="receiver_id">Send Message To (User ID):</label>
+                <input type="number" name="receiver_id" id="receiver_id" required placeholder="Enter User ID">
+
+                <label for="message">Message:</label>
+                <textarea name="message" id="message" required placeholder="Type your message..."></textarea>
+
+                <input type="submit" name="send_message" value="Send Message">
+            </form>
+
+            <h3>Your Messages</h3>
+            <div id="received-messages">
+                <?php
+                // Display messages sent to or received from the user
+                if ($messages_result->num_rows > 0) {
+                    while ($row = $messages_result->fetch_assoc()) {
+                        $sender = ($row['sender_id'] == $user_id) ? "You" : "User " . $row['sender_id'];
+                        echo "<div><strong>$sender:</strong> " . htmlspecialchars($row['message']) . "<br><small>" . $row['created_at'] . "</small></div>";
+                    }
+                } else {
+                    echo "<p>No messages found.</p>";
+                }
+                ?>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// JavaScript to toggle content based on link clicked
-document.getElementById('profile-link').addEventListener('click', function() {
-    setActiveSection('profile-section');
-});
+    // JavaScript to handle tab switching
+    document.getElementById("profile-link").onclick = function() {
+        showSection("profile-section");
+    };
+    document.getElementById("collaboration-link").onclick = function() {
+        showSection("collaboration-section");
+    };
+    document.getElementById("partnership-link").onclick = function() {
+        showSection("partnership-section");
+    };
+    document.getElementById("messages-link").onclick = function() {
+        showSection("messages-section");
+    };
 
-document.getElementById('collaboration-link').addEventListener('click', function() {
-    setActiveSection('collaboration-section');
-});
-
-document.getElementById('partnership-link').addEventListener('click', function() {
-    setActiveSection('partnership-section');
-});
-
-document.getElementById('messages-link').addEventListener('click', function() {
-    setActiveSection('messages-section');
-});
-
-function setActiveSection(sectionId) {
-    var sections = document.getElementsByClassName('content-section');
-    for (var i = 0; i < sections.length; i++) {
-        sections[i].classList.remove('active');
+    function showSection(sectionId) {
+        var sections = document.getElementsByClassName("content-section");
+        for (var i = 0; i < sections.length; i++) {
+            sections[i].classList.remove("active");
+        }
+        document.getElementById(sectionId).classList.add("active");
+        
+        // Highlight the active link in the sidebar
+        var links = document.querySelectorAll(".sidebar a");
+        links.forEach(link => link.classList.remove("active"));
+        document.querySelector(`#${sectionId.replace('-section', '-link')}`).classList.add("active");
     }
-    document.getElementById(sectionId).classList.add('active');
-}
 </script>
 
 </body>

@@ -93,7 +93,14 @@ if (!$artistResult) {
         <!-- Messages Section -->
         <div id="messages" class="section">
             <h2>Your Messages</h2>
-            <p>This is the messages section. Display user messages here.</p>
+            <div id="chat-box">
+                <!-- Display chat messages here -->
+            </div>
+            <form id="message-form">
+                <input type="hidden" id="artist_id" name="artist_id" value="">
+                <input type="text" id="message" placeholder="Type your message here" required>
+                <button type="submit">Send</button>
+            </form>
         </div>
 
         <!-- Browse Artists Section (default view) -->
@@ -109,6 +116,7 @@ if (!$artistResult) {
                             <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
                             <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
                             <button onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
+                            <button onclick="startChat(<?php echo $artist['id']; ?>)">Message</button>
                         </div>
                         <?php
                     }
@@ -151,6 +159,45 @@ function followArtist(artistId) {
         }
     });
 }
+
+// Function to start a chat
+function startChat(artistId) {
+    document.getElementById('artist_id').value = artistId;
+    showSection('messages');
+}
+
+// Handling message sending
+document.getElementById('message-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const artistId = document.getElementById('artist_id').value;
+    const message = document.getElementById('message').value;
+
+    fetch('send_message.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            artist_id: artistId,
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Append message to chat box
+            const chatBox = document.getElementById('chat-box');
+            const newMessage = document.createElement('div');
+            newMessage.textContent = message;
+            chatBox.appendChild(newMessage);
+
+            // Clear input field
+            document.getElementById('message').value = '';
+        } else {
+            alert("Failed to send message: " + data.message);
+        }
+    });
+});
 </script>
 
 </body>
