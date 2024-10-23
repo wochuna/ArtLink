@@ -48,12 +48,28 @@ if ($result->num_rows == 1) {
 
 // Handle sending messages
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
-    $receiver_id = $_POST['recipient_id'];
+    $receiver_id = $_POST['receiver_id'];
     $message = $_POST['message'];
 
     // Prepare and execute the query to insert the message
     $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, message) VALUES (?, ?, ?)");
-    $stmt->bind_param("iis", $user_id, $recipient_id, $message);
+    $stmt->bind_param("iis", $user_id, $receiver_id, $message);
+
+    if (!$stmt->execute()) {
+        echo "Error: " . $stmt->error;
+    }
+
+    $stmt->close();
+}
+
+// Handle partnership requests
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_partnership'])) {
+    $partner_name = $_POST['partner_name'];
+    $description = $_POST['description'];
+
+    // Prepare and execute the query to insert the partnership
+    $stmt = $conn->prepare("INSERT INTO partnerships (artist_id, partner_name, description) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $user_id, $partner_name, $description);
 
     if (!$stmt->execute()) {
         echo "Error: " . $stmt->error;
@@ -265,84 +281,81 @@ $conn->close();
                 <label for="linkedin_link">LinkedIn:</label>
                 <input type="url" name="linkedin_link" id="linkedin_link" value="<?php echo $linkedin_link; ?>">
                 
-                <!-- Update Profile Button -->
-                <input type="submit" name="update" value="Update Profile"> <!-- Update profile button -->
+                <!-- Submit button for updating profile -->
+                <input type="submit" value="Update Profile">
             </div>
         </div>
 
         <!-- Collaboration Section -->
         <div id="collaboration-section" class="content-section">
-            <h2>Collaboration Opportunities</h2>
-            <!-- Add collaboration opportunities content here -->
+            <h2>Collaboration</h2>
+            <form method="POST">
+                <label for="collab_artist_id">Collaborate with Artist ID:</label>
+                <input type="text" id="collab_artist_id" name="collab_artist_id" required>
+                <input type="submit" name="submit_collaboration" value="Send Collaboration Request">
+            </form>
         </div>
 
         <!-- Partnership Section -->
         <div id="partnership-section" class="content-section">
-            <h2>Partnership Opportunities</h2>
-            <!-- Add partnership opportunities content here -->
+            <h2>Partnerships</h2>
+            <form method="POST">
+                <label for="partner_name">Partner Name:</label>
+                <input type="text" id="partner_name" name="partner_name" required>
+                
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" required></textarea>
+                
+                <input type="submit" name="submit_partnership" value="Submit Partnership">
+            </form>
         </div>
 
         <!-- Messages Section -->
         <div id="messages-section" class="content-section">
-            <h2>Messages</h2>
-
-            <!-- Form to send messages -->
-            <form action="" method="POST">
-                <label for="receiver_id">Send Message To (User ID):</label>
-                <input type="number" name="receiver_id" id="receiver_id" required placeholder="Enter User ID">
-
+            <h2>Your Messages</h2>
+            <div class="messages-container">
+                <?php while ($message = $messages_result->fetch_assoc()) : ?>
+                    <div class="message">
+                        <strong><?php echo $message['sender_id'] == $user_id ? "You" : "Artist {$message['sender_id']}"; ?>:</strong>
+                        <p><?php echo $message['message']; ?></p>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+            <form method="POST">
+                <label for="receiver_id">Send Message to Artist ID:</label>
+                <input type="text" id="receiver_id" name="receiver_id" required>
+                
                 <label for="message">Message:</label>
-                <textarea name="message" id="message" required placeholder="Type your message..."></textarea>
-
+                <textarea id="message" name="message" required></textarea>
+                
                 <input type="submit" name="send_message" value="Send Message">
             </form>
-
-            <h3>Your Messages</h3>
-            <div id="received-messages">
-                <?php
-                // Display messages sent to or received from the user
-                if ($messages_result->num_rows > 0) {
-                    while ($row = $messages_result->fetch_assoc()) {
-                        $sender = ($row['sender_id'] == $user_id) ? "You" : "User " . $row['sender_id'];
-                        echo "<div><strong>$sender:</strong> " . htmlspecialchars($row['message']) . "<br><small>" . $row['created_at'] . "</small></div>";
-                    }
-                } else {
-                    echo "<p>No messages found.</p>";
-                }
-                ?>
-            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // JavaScript to handle tab switching
-    document.getElementById("profile-link").onclick = function() {
-        showSection("profile-section");
-    };
-    document.getElementById("collaboration-link").onclick = function() {
-        showSection("collaboration-section");
-    };
-    document.getElementById("partnership-link").onclick = function() {
-        showSection("partnership-section");
-    };
-    document.getElementById("messages-link").onclick = function() {
-        showSection("messages-section");
-    };
+    // JavaScript to switch between sections
+    const profileLink = document.getElementById('profile-link');
+    const collaborationLink = document.getElementById('collaboration-link');
+    const partnershipLink = document.getElementById('partnership-link');
+    const messagesLink = document.getElementById('messages-link');
+
+    const sections = document.querySelectorAll('.content-section');
 
     function showSection(sectionId) {
-        var sections = document.getElementsByClassName("content-section");
-        for (var i = 0; i < sections.length; i++) {
-            sections[i].classList.remove("active");
-        }
-        document.getElementById(sectionId).classList.add("active");
-        
-        // Highlight the active link in the sidebar
-        var links = document.querySelectorAll(".sidebar a");
-        links.forEach(link => link.classList.remove("active"));
-        document.querySelector(`#${sectionId.replace('-section', '-link')}`).classList.add("active");
+        sections.forEach(section => {
+            section.classList.remove('active');
+            if (section.id === sectionId) {
+                section.classList.add('active');
+            }
+        });
     }
-</script>
 
+    profileLink.addEventListener('click', () => showSection('profile-section'));
+    collaborationLink.addEventListener('click', () => showSection('collaboration-section'));
+    partnershipLink.addEventListener('click', () => showSection('partnership-section'));
+    messagesLink.addEventListener('click', () => showSection('messages-section'));
+</script>
 </body>
 </html>
