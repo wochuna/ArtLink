@@ -2,13 +2,13 @@
 // Start session
 session_start();
 
-// Database connection details
+// Database 
 $servername = "localhost";
-$dbUsername = "root";  // Database username (usually 'root' in XAMPP)
-$dbPassword = "";      // Database password (empty in XAMPP)
-$dbName = "artlink_entertainment"; // Your database name
+$dbUsername = "root";  
+$dbPassword = "";      
+$dbName = "artlink_entertainment"; 
 
-// Create connection
+// Connection
 $conn = new mysqli($servername, $dbUsername, $dbPassword, $dbName);
 
 // Check connection

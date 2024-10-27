@@ -66,31 +66,98 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_partnership'])) {
     $partner_name = $_POST['partner_name'];
     $description = $_POST['description'];
-    $start_date = $_POST['start_date'] ?? null; // Use null coalescing operator
-    $end_date = $_POST['end_date'] ?? null; // Use null coalescing operator
 
-    // Check if start_date is provided
-    if (empty($start_date)) {
-        echo "Start date is required.";
+    // Prepare and execute the query to insert the partnership
+    $stmt = $conn->prepare("INSERT INTO partnerships (artist_id, partner_name, description) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $user_id, $partner_name, $description);
+
+    if (!$stmt->execute()) {
+        echo "Error: " . $stmt->error;
+    }
+
+    $stmt->close();
+}
+
+// Handle profile picture upload
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_picture'])) {
+    $target_dir = "uploads/"; // Specify your upload directory
+    $target_file = $target_dir . basename($_FILES["profile_picture"]["name"]);
+    $uploadOk = 1;
+    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+
+    // Check if image file is an actual image or fake image
+    $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
+    if ($check !== false) {
+        // File is an image
+        $uploadOk = 1;
     } else {
-        // Prepare and execute the query to insert the partnership
-        $stmt = $conn->prepare("INSERT INTO partnerships (artist_id, partner_name, start_date, end_date, description) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("issss", $user_id, $partner_name, $start_date, $end_date, $description);
+        echo "File is not an image.";
+        $uploadOk = 0;
+    }
 
-        if (!$stmt->execute()) {
-            echo "Error: " . $stmt->error;
+    // Check if file already exists
+    if (file_exists($target_file)) {
+        echo "Sorry, file already exists.";
+        $uploadOk = 0;
+    }
+
+    // Check file size
+    if ($_FILES["profile_picture"]["size"] > 500000) { // Limit to 500KB
+        echo "Sorry, your file is too large.";
+        $uploadOk = 0;
+    }
+
+    // Allow certain file formats
+    if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif") {
+        echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+        $uploadOk = 0;
+    }
+
+    // Check if $uploadOk is set to 0 by an error
+    if ($uploadOk == 0) {
+        echo "Sorry, your file was not uploaded.";
+    } else {
+        // If everything is ok, try to upload file
+        if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
+            // Update the profile picture in the database
+            $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
+            $stmt->bind_param("si", $target_file, $user_id);
+
+            if ($stmt->execute()) {
+                echo "The file ". htmlspecialchars(basename($_FILES["profile_picture"]["name"])). " has been uploaded.";
+                header("Location: " . $_SERVER['PHP_SELF']); // Redirect to the same page
+                exit();
+            } else {
+                echo "Error updating database: " . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            echo "Sorry, there was an error uploading your file.";
         }
-
-        $stmt->close();
     }
 }
 
-// Fetch partnerships for the logged-in user
-$sql = "SELECT partner_name, start_date, end_date, description FROM partnerships WHERE artist_id = ?";
+// Fetch messages for the logged-in user
+$sql = "SELECT * FROM messages WHERE sender_id = ? OR recipient_id = ? ORDER BY created_at DESC";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
-$partnerships_result = $stmt->get_result();
+$messages_result = $stmt->get_result();
+
+// Fetch followers of the artist
+$followers_sql = "SELECT u.id, u.username FROM fans f JOIN users u ON f.follower_id = u.id WHERE f.followed_id = ?";
+$followers_stmt = $conn->prepare($followers_sql);
+$followers_stmt->bind_param("i", $user_id);
+$followers_stmt->execute();
+$followers_result = $followers_stmt->get_result();
+
+// Get the total number of followers
+$total_followers_sql = "SELECT COUNT(*) as total_followers FROM fans WHERE followed_id = ?";
+$total_followers_stmt = $conn->prepare($total_followers_sql);
+$total_followers_stmt->bind_param("i", $user_id);
+$total_followers_stmt->execute();
+$total_followers_result = $total_followers_stmt->get_result();
+$total_followers = $total_followers_result->fetch_assoc()['total_followers'];
 
 $stmt->close();
 $conn->close();
@@ -105,153 +172,233 @@ $conn->close();
     <link rel="stylesheet" href="art.css">
     <script type="text/javascript" src="artist.js"></script>
     <style>
-        /* Add your CSS styles here */
+        /* Add your existing styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #ff9a00, #ff3d00);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(45deg, #ff9a00, #ff3d00);
+            color: white;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 15px 10px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s;
+        }
+
+        .sidebar a:hover, .sidebar a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .content {
+            flex: 1;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            margin: auto;
+            overflow-y: auto;
+            max-width: 800px;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto;
+            width: 100%;
+        }
+
+        .profile-container img {
+            width: 150px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }
+
+        .profile-container label {
+            font-weight: bold;
+            color: #3e3e3e;
+        }
+
+        .profile-container input,
+        .profile-container textarea {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border: 2px solid #ff3d00;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .profile-container input:focus, 
+        .profile-container textarea:focus {
+            border-color: #ff9a00;
+            outline: none;
+        }
+
+        .change-profile-picture {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #ff3d00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            text-decoration: none;
+        }
+
+        .change-profile-picture input[type="file"] {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-<nav>
-    <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> 
-    <label class="logo">ArtLink Entertainment</label>
-    <ul>
-        <li><a href="index.php">HOME</a></li>
-        <li><a href="about.php">ABOUT</a></li>
-        <li><a href="signup.php">SIGN UP</a></li>
-        <li><a href="login.php">LOGIN</a></li>
-    </ul> 
-</nav>
-
 <div class="container">
     <!-- Sidebar -->
     <div class="sidebar">
-        <a href="#" id="profile-link" class="active">Profile</a>
-        <a href="#" id="collaboration-link">Collaboration</a>
-        <a href="#" id="partnership-link">Partnership</a>
-        <a href="#" id="messages-link">Messages</a>
+        <h1>Dashboard</h1>
+        <a href="#profile" class="active">Profile</a>
+        <a href="#collaboration">Collaboration</a>
+        <a href="#partnership">Partnership</a>
+        <a href="#followers">Followers</a>
     </div>
 
-    <!-- Right Content Area -->
+    <!-- Content -->
     <div class="content">
         <!-- Profile Section -->
-        <div id="profile-section" class="content-section active">
-            <h2>Your Profile</h2>
+        <div class="content-section active" id="profile">
             <div class="profile-container">
-                <img src="uploads/<?php echo $profile_picture; ?>" alt="Profile Picture" />
-                <label for="username">Username:</label>
-                <input type="text" name="username" id="username" value="<?php echo $username; ?>" required>
-                
-                <label for="bio">Bio:</label>
-                <textarea name="bio" id="bio" required><?php echo $bio; ?></textarea>
-                
-                <label for="x_link">X (Twitter) Link:</label>
-                <input type="url" name="x_link" id="x_link" value="<?php echo $x_link; ?>">
-                
-                <label for="instagram_link">Instagram Link:</label>
-                <input type="url" name="instagram_link" id="instagram_link" value="<?php echo $instagram_link; ?>">
-                
-                <label for="facebook_link">Facebook Link:</label>
-                <input type="url" name="facebook_link" id="facebook_link" value="<?php echo $facebook_link; ?>">
-                
-                <label for="linkedin_link">LinkedIn Link:</label>
-                <input type="url" name="linkedin_link" id="linkedin_link" value="<?php echo $linkedin_link; ?>">
+                <img src="<?php echo $profile_picture; ?>" alt="Profile Picture">
 
-                <button type="submit" form="update-profile-form">Update Profile</button>
-            </div>
+                <!-- Change Profile Picture Link -->
+                <label for="profile_picture">Change Profile Picture:</label>
+                <form method="post" enctype="multipart/form-data">
+                    <input type="file" name="profile_picture" id="profile_picture" accept="image/*" required>
+                    <input type="submit" value="Upload" class="change-profile-picture">
+                </form>
+
+                
+                <h2><?php echo $username; ?></h2>
+                <label for="bio">Bio:</label>
+                <textarea id="bio" readonly><?php echo $bio; ?></textarea>
+
+                <label for="x_link">X Profile Link:</label>
+                <input type="text" id="x_link" value="<?php echo $x_link; ?>" readonly>
+
+                <label for="instagram_link">Instagram Link:</label>
+                <input type="text" id="instagram_link" value="<?php echo $instagram_link; ?>" readonly>
+
+                <label for="facebook_link">Facebook Link:</label>
+                <input type="text" id="facebook_link" value="<?php echo $facebook_link; ?>" readonly>
+
+                <label for="linkedin_link">LinkedIn Link:</label>
+                <input type="text" id="linkedin_link" value="<?php echo $linkedin_link; ?>" readonly>
+                 <!-- Update Profile Button -->
+                <button onclick="window.location.href='update_profile.php'">Update Profile</button>
+              
+         </div>
         </div>
 
         <!-- Collaboration Section -->
-        <div id="collaboration-section" class="content-section">
-            <h2>Collaboration</h2>
-            <p>Information about collaborations will be displayed here.</p>
+        <div class="content-section" id="collaboration">
+            <h3>Collaborate with Me</h3>
+            <form method="post" action="">
+                <label for="message">Send a Message:</label>
+                <input type="hidden" name="receiver_id" value="<?php echo $user_id; ?>">
+                <textarea id="message" name="message" required></textarea>
+                <input type="submit" name="send_message" value="Send">
+            </form>
         </div>
 
         <!-- Partnership Section -->
-        <div id="partnership-section" class="content-section">
-            <h2>Partnerships</h2>
-            <form action="" method="POST" id="partnership-form">
+        <div class="content-section" id="partnership">
+            <h3>Partnership Requests</h3>
+            <form method="post" action="">
                 <label for="partner_name">Partner Name:</label>
-                <input type="text" name="partner_name" id="partner_name" required>
-
-                <label for="start_date">Start Date:</label>
-                <input type="date" name="start_date" id="start_date" required>
-
-                <label for="end_date">End Date:</label>
-                <input type="date" name="end_date" id="end_date">
+                <input type="text" id="partner_name" name="partner_name" required>
 
                 <label for="description">Description:</label>
-                <textarea name="description" id="description"></textarea>
-
-                <input type="submit" name="submit_partnership" value="Add Partnership">
+                <textarea id="description" name="description" required></textarea>
+                
+                <input type="submit" name="submit_partnership" value="Submit Partnership">
             </form>
+        </div>
 
-            <div class="partnerships-list">
-                <h3>Your Partnerships</h3>
-                <?php while ($partnership = $partnerships_result->fetch_assoc()): ?>
-                    <div class="partnership">
-                        <strong><?php echo $partnership['partner_name']; ?></strong><br>
-                        Start Date: <?php echo $partnership['start_date']; ?><br>
-                        End Date: <?php echo $partnership['end_date']; ?><br>
-                        Description: <?php echo $partnership['description']; ?><br>
+        <!-- Followers Section -->
+        <div class="content-section" id="followers">
+            <h3>Your Followers (<?php echo $total_followers; ?>)</h3>
+            <div class="followers-list">
+                <?php while ($follower = $followers_result->fetch_assoc()) : ?>
+                    <div class="follower-item">
+                        <span><?php echo $follower['username']; ?></span>
+                        <button onclick="startConversation(<?php echo $follower['id']; ?>)">Message</button>
                     </div>
                 <?php endwhile; ?>
             </div>
-        </div>
-
-        <!-- Messages Section -->
-        <div id="messages-section" class="content-section">
-            <h2>Messages</h2>
-            <form action="" method="POST" id="message-form">
-                <label for="receiver_id">Send Message To (User ID):</label>
-                <input type="number" name="receiver_id" id="receiver_id" required>
-
-                <label for="message">Message:</label>
-                <textarea name="message" id="message" required></textarea>
-
-                <input type="submit" name="send_message" value="Send Message">
-            </form>
         </div>
     </div>
 </div>
 
 <script>
-    // JavaScript to handle sidebar link clicks and show/hide content sections
-    const profileLink = document.getElementById("profile-link");
-    const collaborationLink = document.getElementById("collaboration-link");
-    const partnershipLink = document.getElementById("partnership-link");
-    const messagesLink = document.getElementById("messages-link");
+    // JavaScript for handling tab navigation
+    document.querySelectorAll('.sidebar a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
 
-    const sections = document.querySelectorAll(".content-section");
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
 
-    profileLink.addEventListener("click", () => {
-        showSection("profile-section");
-    });
+            document.querySelector(this.getAttribute('href')).classList.add('active');
 
-    collaborationLink.addEventListener("click", () => {
-        showSection("collaboration-section");
-    });
+            document.querySelectorAll('.sidebar a').forEach(link => {
+                link.classList.remove('active');
+            });
 
-    partnershipLink.addEventListener("click", () => {
-        showSection("partnership-section");
-    });
-
-    messagesLink.addEventListener("click", () => {
-        showSection("messages-section");
-    });
-
-    function showSection(sectionId) {
-        sections.forEach(section => {
-            section.classList.remove("active");
+            this.classList.add('active');
         });
-        document.getElementById(sectionId).classList.add("active");
+    });
 
-        // Remove active class from sidebar links
-        [profileLink, collaborationLink, partnershipLink, messagesLink].forEach(link => {
-            link.classList.remove("active");
-        });
-
-        // Set the clicked link as active
-        document.getElementById(sectionId.replace("-section", "-link")).classList.add("active");
+    function startConversation(receiverId) {
+        document.querySelector('input[name="receiver_id"]').value = receiverId;
+        document.getElementById('collaboration').classList.add('active');
+        document.getElementById('profile').classList.remove('active');
+        document.getElementById('partnership').classList.remove('active');
+        document.getElementById('followers').classList.remove('active');
     }
 </script>
+
 </body>
 </html>

@@ -32,6 +32,17 @@ $artistResult = $conn->query($sql);
 if (!$artistResult) {
     die("Query failed: " . $conn->error); // Debugging line
 }
+
+// Fetch followed artists for the logged-in user
+$followedArtistsSql = "SELECT followed_id FROM fans WHERE follower_id = ?";
+$followedArtistsStmt = $conn->prepare($followedArtistsSql);
+$followedArtistsStmt->bind_param('i', $id);
+$followedArtistsStmt->execute();
+$followedArtistsResult = $followedArtistsStmt->get_result();
+$followedArtists = [];
+while ($row = $followedArtistsResult->fetch_assoc()) {
+    $followedArtists[] = $row['followed_id'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -81,7 +92,30 @@ if (!$artistResult) {
         <!-- Followed Artists Section -->
         <div id="followed-artists" class="section">
             <h2>Followed Artists</h2>
-            <p>This is the followed artists section. List the artists you are following here.</p>
+            <div class="artist-list">
+                <?php
+                if (!empty($followedArtists)) {
+                    foreach ($followedArtists as $followed_id) {
+                        $artistSql = "SELECT u.username, a.profile_picture FROM users u
+                                      JOIN artwork a ON u.id = a.id WHERE u.id = ?";
+                        $artistStmt = $conn->prepare($artistSql);
+                        $artistStmt->bind_param('i', $followed_id);
+                        $artistStmt->execute();
+                        $artistResult = $artistStmt->get_result();
+                        while ($artist = $artistResult->fetch_assoc()) {
+                            ?>
+                            <div class="artist">
+                                <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
+                                <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
+                            </div>
+                            <?php
+                        }
+                    }
+                } else {
+                    echo "You are not following any artists.";
+                }
+                ?>
+            </div>
         </div>
 
         <!-- Events Section -->
@@ -141,7 +175,7 @@ function showSection(sectionId) {
 
 // Function to follow artist
 function followArtist(artistId) {
-    fetch('audience.php', {
+    fetch('follow.php', { // Update to the correct follow PHP script
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -154,6 +188,8 @@ function followArtist(artistId) {
     .then(data => {
         if (data.success) {
             alert("You are now following the artist!");
+            // Optionally, you can refresh the followed artists section
+            showSection('followed-artists');
         } else {
             alert("Failed to follow artist: " + data.message);
         }
