@@ -266,27 +266,48 @@ $conn->close();
             outline: none;
         }
 
-        .change-profile-picture {
-            display: inline-block;
-            padding: 10px 15px;
-            background-color: #ff3d00;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-            text-decoration: none;
+        .followers-list {
+            display: flex;
+            flex-direction: column;
         }
 
-        .change-profile-picture input[type="file"] {
-            display: none;
+        .follower-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .messages-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .message {
+            margin: 5px 0;
+        }
+
+        .message.sent {
+            text-align: right;
+            color: green;
+        }
+
+        .message.received {
+            text-align: left;
+            color: blue;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Sidebar -->
     <div class="sidebar">
         <h1>Dashboard</h1>
         <a href="#profile" class="active">Profile</a>
@@ -295,40 +316,19 @@ $conn->close();
         <a href="#followers">Followers</a>
     </div>
 
-    <!-- Content -->
     <div class="content">
         <!-- Profile Section -->
         <div class="content-section active" id="profile">
             <div class="profile-container">
                 <img src="<?php echo $profile_picture; ?>" alt="Profile Picture">
-
-                <!-- Change Profile Picture Link -->
-                <label for="profile_picture">Change Profile Picture:</label>
-                <form method="post" enctype="multipart/form-data">
-                    <input type="file" name="profile_picture" id="profile_picture" accept="image/*" required>
-                    <input type="submit" value="Upload" class="change-profile-picture">
-                </form>
-
-                
-                <h2><?php echo $username; ?></h2>
                 <label for="bio">Bio:</label>
                 <textarea id="bio" readonly><?php echo $bio; ?></textarea>
-
-                <label for="x_link">X Profile Link:</label>
-                <input type="text" id="x_link" value="<?php echo $x_link; ?>" readonly>
-
-                <label for="instagram_link">Instagram Link:</label>
-                <input type="text" id="instagram_link" value="<?php echo $instagram_link; ?>" readonly>
-
-                <label for="facebook_link">Facebook Link:</label>
-                <input type="text" id="facebook_link" value="<?php echo $facebook_link; ?>" readonly>
-
-                <label for="linkedin_link">LinkedIn Link:</label>
-                <input type="text" id="linkedin_link" value="<?php echo $linkedin_link; ?>" readonly>
-                 <!-- Update Profile Button -->
-                <button onclick="window.location.href='update_profile.php'">Update Profile</button>
-              
-         </div>
+                <form method="post" enctype="multipart/form-data">
+                    <label for="profile_picture">Upload New Profile Picture:</label>
+                    <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
+                    <input type="submit" value="Upload">
+                </form>
+            </div>
         </div>
 
         <!-- Collaboration Section -->
@@ -340,6 +340,17 @@ $conn->close();
                 <textarea id="message" name="message" required></textarea>
                 <input type="submit" name="send_message" value="Send">
             </form>
+
+            <h4>Messages:</h4>
+            <div class="messages-container">
+                <?php while ($message = $messages_result->fetch_assoc()): ?>
+                    <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
+                        <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
+                        <p><?php echo htmlspecialchars($message['message']); ?></p>
+                        <small><?php echo $message['created_at']; ?></small>
+                    </div>
+                <?php endwhile; ?>
+            </div>
         </div>
 
         <!-- Partnership Section -->
@@ -348,10 +359,8 @@ $conn->close();
             <form method="post" action="">
                 <label for="partner_name">Partner Name:</label>
                 <input type="text" id="partner_name" name="partner_name" required>
-
                 <label for="description">Description:</label>
                 <textarea id="description" name="description" required></textarea>
-                
                 <input type="submit" name="submit_partnership" value="Submit Partnership">
             </form>
         </div>
@@ -374,29 +383,25 @@ $conn->close();
 <script>
     // JavaScript for handling tab navigation
     document.querySelectorAll('.sidebar a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-
+        link.addEventListener('click', function() {
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
-
             document.querySelector(this.getAttribute('href')).classList.add('active');
 
-            document.querySelectorAll('.sidebar a').forEach(link => {
-                link.classList.remove('active');
+            document.querySelectorAll('.sidebar a').forEach(item => {
+                item.classList.remove('active');
             });
-
             this.classList.add('active');
         });
     });
 
-    function startConversation(receiverId) {
-        document.querySelector('input[name="receiver_id"]').value = receiverId;
-        document.getElementById('collaboration').classList.add('active');
-        document.getElementById('profile').classList.remove('active');
-        document.getElementById('partnership').classList.remove('active');
-        document.getElementById('followers').classList.remove('active');
+    function startConversation(followerId) {
+        document.querySelector('input[name="receiver_id"]').value = followerId;
+        document.querySelector('#collaboration').classList.add('active');
+        document.querySelector('#profile').classList.remove('active');
+        document.querySelector('#partnership').classList.remove('active');
+        document.querySelector('#followers').classList.remove('active');
     }
 </script>
 

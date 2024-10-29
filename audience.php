@@ -164,6 +164,13 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
 </div>
 
 <script>
+// Assign userId and username from PHP session variables
+const userId = <?php echo isset($_SESSION['id']) ? json_encode((int)$_SESSION['id']) : 'null'; ?>; // For integers
+const username = <?php echo isset($_SESSION['username']) ? json_encode($_SESSION['username']) : 'null'; ?>; // For strings
+
+console.log('User ID:', userId);
+console.log('Username:', username);
+
 // JavaScript to toggle between sections
 function showSection(sectionId) {
     const sections = document.querySelectorAll('.section');
@@ -235,6 +242,7 @@ document.getElementById('message-form').addEventListener('submit', function(e) {
     });
 });
 </script>
+
 
 </body>
 </html>
