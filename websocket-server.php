@@ -1,10 +1,10 @@
 <?php
+require __DIR__ . '/vendor/autoload.php';
+
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
-require dirname(__DIR__) . '/vendor/autoload.php';
-
-class Chat implements MessageComponentInterface {
+class ChatServer implements MessageComponentInterface {
     protected $clients;
 
     public function __construct() {
@@ -16,16 +16,9 @@ class Chat implements MessageComponentInterface {
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
-        $data = json_decode($msg, true);
-
         foreach ($this->clients as $client) {
-            // Send message to specific user
-            if ($client !== $from && $client->resourceId === $data['recipient_id']) {
-                $client->send(json_encode([
-                    'sender_id' => $data['sender_id'],
-                    'message' => $data['message'],
-                    'username' => $data['username']
-                ]));
+            if ($from !== $client) {
+                $client->send($msg);
             }
         }
     }
@@ -39,17 +32,14 @@ class Chat implements MessageComponentInterface {
     }
 }
 
-use Ratchet\Server\IoServer;
-use Ratchet\Http\HttpServer;
-use Ratchet\WebSocket\WsServer;
-
-$server = IoServer::factory(
-    new HttpServer(
-        new WsServer(
-            new Chat()
+$server = \Ratchet\Server\IoServer::factory(
+    new \Ratchet\Http\HttpServer(
+        new \Ratchet\WebSocket\WsServer(
+            new ChatServer()
         )
     ),
     8080
 );
 
 $server->run();
+?>

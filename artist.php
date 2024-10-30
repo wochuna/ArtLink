@@ -48,7 +48,7 @@ if ($result->num_rows == 1) {
 
 // Handle sending messages
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
-    $receiver_id = $_POST['receiver_id'];
+    $receiver_id = $_POST['recipient_id'];
     $message = $_POST['message'];
 
     // Prepare and execute the query to insert the message
@@ -137,12 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_picture'])) {
     }
 }
 
-// Fetch messages for the logged-in user
+// Fetch messages for the logged-in user (replaces $all_messages_result section)
 $sql = "SELECT * FROM messages WHERE sender_id = ? OR recipient_id = ? ORDER BY created_at DESC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
-$messages_result = $stmt->get_result();
+$all_messages_result = $stmt->get_result();
+
 
 // Fetch followers of the artist
 $followers_sql = "SELECT u.id, u.username FROM fans f JOIN users u ON f.follower_id = u.id WHERE f.followed_id = ?";
@@ -314,6 +315,7 @@ $conn->close();
         <a href="#collaboration">Collaboration</a>
         <a href="#partnership">Partnership</a>
         <a href="#followers">Followers</a>
+        <a href="#messages">Messages</a> 
     </div>
 
     <div class="content">
@@ -336,21 +338,22 @@ $conn->close();
             <h3>Collaborate with Me</h3>
             <form method="post" action="">
                 <label for="message">Send a Message:</label>
-                <input type="hidden" name="receiver_id" value="<?php echo $user_id; ?>">
+                <input type="hidden" name="recipient_id" value="<?php echo $user_id; ?>">
                 <textarea id="message" name="message" required></textarea>
                 <input type="submit" name="send_message" value="Send">
             </form>
 
             <h4>Messages:</h4>
             <div class="messages-container">
-                <?php while ($message = $messages_result->fetch_assoc()): ?>
-                    <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
-                        <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
-                        <p><?php echo htmlspecialchars($message['message']); ?></p>
-                        <small><?php echo $message['created_at']; ?></small>
-                    </div>
-                <?php endwhile; ?>
-            </div>
+    <?php while ($message = $all_messages_result->fetch_assoc()): ?>
+        <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
+            <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
+            <p><?php echo htmlspecialchars($message['message']); ?></p>
+            <small><?php echo $message['created_at']; ?></small>
+        </div>
+    <?php endwhile; ?>
+</div>
+
         </div>
 
         <!-- Partnership Section -->
@@ -377,33 +380,103 @@ $conn->close();
                 <?php endwhile; ?>
             </div>
         </div>
+
+        <!-- Messages Section -->
+        <div class="content-section" id="messages">
+            <h3>Your Messages</h3>
+            <div class="messages-container">
+                <?php while ($msg = $all_messages_result->fetch_assoc()): ?>
+                    <div class="message <?php echo ($msg['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
+                        <strong><?php echo ($msg['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
+                        <p><?php echo htmlspecialchars($msg['message']); ?></p>
+                        <small><?php echo $msg['created_at']; ?></small>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+    // Initialize WebSocket connection
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onopen = function() {
+        console.log("Artist connected to WebSocket server");
+    };
+
+    // Handle incoming messages from audience
+    socket.onmessage = function(event) {
+        const messageData = JSON.parse(event.data);
+        if (messageData.sender_id === document.querySelector('input[name="receiver_id"]').value) {
+            displayMessage(messageData.message, 'received');
+        }
+    };
+
+    // Function to display messages in the chat window
+    function displayMessage(message, type) {
+        const chatBox = document.getElementById('chat-box');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', type);
+        messageDiv.textContent = message;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
     // JavaScript for handling tab navigation
     document.querySelectorAll('.sidebar a').forEach(link => {
-        link.addEventListener('click', function() {
+        link.addEventListener('click', function(event) {
+            event.preventDefault();
+
+            // Hide all sections and remove active class from sidebar links
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
-            document.querySelector(this.getAttribute('href')).classList.add('active');
-
             document.querySelectorAll('.sidebar a').forEach(item => {
                 item.classList.remove('active');
             });
+
+            // Show the selected section and set the link as active
+            document.querySelector(this.getAttribute('href')).classList.add('active');
             this.classList.add('active');
         });
     });
 
+    // Function to start a conversation with a selected follower
     function startConversation(followerId) {
         document.querySelector('input[name="receiver_id"]').value = followerId;
+        
+        // Display chat section and hide others
         document.querySelector('#collaboration').classList.add('active');
         document.querySelector('#profile').classList.remove('active');
         document.querySelector('#partnership').classList.remove('active');
         document.querySelector('#followers').classList.remove('active');
     }
+
+    // Send message functionality for two-way chat
+    document.getElementById('message-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const messageInput = document.getElementById('message');
+        const message = messageInput.value;
+        const receiverId = document.querySelector('input[name="receiver_id"]').value;
+
+        if (message && receiverId) {
+            // Send message to WebSocket server
+            socket.send(JSON.stringify({
+                sender_id: 'artist_id',  // Replace with actual artist ID variable
+                receiver_id: receiverId,
+                message: message
+            }));
+
+            // Display the sent message in chat
+            displayMessage(message, 'sent');
+            messageInput.value = ''; // Clear input field
+        }
+    });
 </script>
+
+
 
 </body>
 </html>

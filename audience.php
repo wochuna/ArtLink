@@ -2,6 +2,15 @@
 // Start session to track logged-in user
 session_start();
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Generate a CSRF token if it doesn't exist
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Database connection details
 $servername = "localhost";
 $dbUsername = "root";
@@ -53,9 +62,37 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
     <title>Audience Dashboard</title>
     <link rel="stylesheet" href="art.css"> 
     <link rel="stylesheet" href="audience.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .section { display: none; }
         .active { display: block; }
+
+        /* Chat message styles */
+        #chat-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 70%;
+            clear: both;
+        }
+        .message.sent {
+            background-color: #dcf8c6; /* Light green for sent messages */
+            margin-left: auto; /* Align to the right */
+            text-align: right;
+        }
+        .message.received {
+            background-color: #f1f0f0; /* Light gray for received messages */
+            margin-right: auto; /* Align to the left */
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -132,6 +169,7 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
             </div>
             <form id="message-form">
                 <input type="hidden" id="artist_id" name="artist_id" value="">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> <!-- Add CSRF token -->
                 <input type="text" id="message" placeholder="Type your message here" required>
                 <button type="submit">Send</button>
             </form>
@@ -149,7 +187,10 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
                         <div class="artist">
                             <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
                             <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
-                            <button onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
+                            <form id="follow-form-<?php echo $artist['id']; ?>">
+                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> <!-- CSRF Token -->
+                                <button type="button" onclick="followArtist(<?php echo $artist['id']; ?>)" data-following="false">Follow</button>
+                            </form>
                             <button onclick="startChat(<?php echo $artist['id']; ?>)">Message</button>
                         </div>
                         <?php
@@ -164,14 +205,6 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
 </div>
 
 <script>
-// Assign userId and username from PHP session variables
-const userId = <?php echo isset($_SESSION['id']) ? json_encode((int)$_SESSION['id']) : 'null'; ?>; // For integers
-const username = <?php echo isset($_SESSION['username']) ? json_encode($_SESSION['username']) : 'null'; ?>; // For strings
-
-console.log('User ID:', userId);
-console.log('Username:', username);
-
-// JavaScript to toggle between sections
 function showSection(sectionId) {
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => {
@@ -182,67 +215,70 @@ function showSection(sectionId) {
 
 // Function to follow artist
 function followArtist(artistId) {
-    fetch('follow.php', { // Update to the correct follow PHP script
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-            artist_id: artistId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert("You are now following the artist!");
-            // Optionally, you can refresh the followed artists section
-            showSection('followed-artists');
-        } else {
-            alert("Failed to follow artist: " + data.message);
-        }
-    });
-}
+    const csrfToken = document.querySelector(`#follow-form-${artistId} input[name="csrf_token"]`).value; // Get CSRF token
 
-// Function to start a chat
-function startChat(artistId) {
-    document.getElementById('artist_id').value = artistId;
-    showSection('messages');
-}
-
-// Handling message sending
-document.getElementById('message-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const artistId = document.getElementById('artist_id').value;
-    const message = document.getElementById('message').value;
-
-    fetch('send_message.php', {
+    fetch('follow.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
             artist_id: artistId,
-            message: message
+            csrf_token: csrfToken // Pass CSRF token here
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Append message to chat box
-            const chatBox = document.getElementById('chat-box');
-            const newMessage = document.createElement('div');
-            newMessage.textContent = message;
-            chatBox.appendChild(newMessage);
-
-            // Clear input field
-            document.getElementById('message').value = '';
+            const followButton = document.querySelector(`#follow-form-${artistId} button`);
+            followButton.innerText = 'Following';
+            followButton.disabled = true; // Disable button after following
         } else {
-            alert("Failed to send message: " + data.message);
+            alert(data.message);
         }
-    });
-});
+    })
+    .catch(error => console.error('Error:', error));
+}
+        // Initialize WebSocket connection
+        const socket = new WebSocket('ws://localhost:8080');
+
+        socket.onopen = function() {
+            console.log("Connected to WebSocket server");
+        };
+
+        socket.onmessage = function(event) {
+            const chatBox = document.getElementById('chat-box');
+            const receivedMessage = document.createElement('div');
+            receivedMessage.className = 'message received';
+            receivedMessage.textContent = event.data;
+            chatBox.appendChild(receivedMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        // Function to send a message
+        document.getElementById('message-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+            const artistId = document.getElementById('artist_id').value;
+
+            // Send message via WebSocket
+            socket.send(JSON.stringify({ artist_id: artistId, message }));
+
+            // Display sent message
+            const chatBox = document.getElementById('chat-box');
+            const sentMessage = document.createElement('div');
+            sentMessage.className = 'message sent';
+            sentMessage.textContent = message;
+            chatBox.appendChild(sentMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            messageInput.value = '';
+        });
+    </script>
+</body>
+</html>
+
 </script>
-
-
 </body>
 </html>
