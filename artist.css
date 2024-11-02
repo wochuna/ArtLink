@@ -1,0 +1,130 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #ff9a00, #ff3d00);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 300px;
+    background: linear-gradient(45deg, #ff9a00, #ff3d00);
+    color: white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar a {
+    display: block;
+    color: white;
+    padding: 15px 10px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.content {
+    flex: 1;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    margin: auto;
+    overflow-y: auto;
+    max-width: 800px;
+}
+
+.content-section {
+    display: none;
+}
+
+.content-section.active {
+    display: block;
+}
+
+.profile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: auto;
+    width: 100%;
+}
+
+.profile-container img {
+    width: 150px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+}
+
+.profile-container label {
+    font-weight: bold;
+    color: #3e3e3e;
+}
+
+.profile-container input,
+.profile-container textarea {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 10px 0;
+    border: 2px solid #ff3d00;
+    border-radius: 10px;
+    box-sizing: border-box;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.profile-container input:focus, 
+.profile-container textarea:focus {
+    border-color: #ff9a00;
+    outline: none;
+}
+
+.followers-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.follower-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.messages-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.message {
+    margin: 5px 0;
+}
+
+.message.sent {
+    text-align: right;
+    color: green;
+}
+
+.message.received {
+    text-align: left;
+    color: blue;
+}

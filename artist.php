@@ -41,6 +41,7 @@ if ($result->num_rows == 1) {
     $instagram_link = $artist['instagram_link'];
     $facebook_link = $artist['facebook_link'];
     $linkedin_link = $artist['linkedin_link'];
+    $tiktok_link = $artist['tiktok_link'];
 } else {
     echo "Artist profile not found.";
     exit();
@@ -58,7 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     if (!$stmt->execute()) {
         echo "Error: " . $stmt->error;
     }
-
     $stmt->close();
 }
 
@@ -74,42 +74,126 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_partnership']))
     if (!$stmt->execute()) {
         echo "Error: " . $stmt->error;
     }
-
     $stmt->close();
 }
 
-// Handle profile picture upload
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_picture'])) {
-    $target_dir = "uploads/"; // Specify your upload directory
-    $target_file = $target_dir . basename($_FILES["profile_picture"]["name"]);
-    $uploadOk = 1;
-    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+// Handle profile updates
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_changes'])) {
+    // Update bio
+    $new_bio = $_POST['bio'];
 
-    // Check if image file is an actual image or fake image
-    $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
-    if ($check !== false) {
-        // File is an image
-        $uploadOk = 1;
+    // Update all social links
+    $x_link = $_POST['x_link'];
+    $instagram_link = $_POST['instagram_link'];
+    $facebook_link = $_POST['facebook_link'];
+    $linkedin_link = $_POST['linkedin_link'];
+    $tiktok_link = $_POST['tiktok_link'];
+
+    // Update bio and links in the database
+    $stmt = $conn->prepare("UPDATE artwork SET bio = ?, x_link = ?, instagram_link = ?, facebook_link = ?, linkedin_link = ?, tiktok_link = ? WHERE id = ?");
+    $stmt->bind_param("ssssssi", $new_bio, $x_link, $instagram_link, $facebook_link, $linkedin_link, $tiktok_link, $user_id);
+    
+    if ($stmt->execute()) {
+        echo "Profile updated successfully.";
     } else {
-        echo "File is not an image.";
+        echo "Error updating profile: " . $stmt->error;
+    }
+    $stmt->close();
+
+    // Handle profile picture upload
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == UPLOAD_ERR_OK) {
+        $target_dir = "uploads/"; // Specify your upload directory
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0755, true); // Create directory if it doesn't exist
+        }
+
+        // Generate a unique filename
+        $original_file_name = basename($_FILES["profile_picture"]["name"]);
+        $imageFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
+        $target_file = $target_dir . uniqid() . '.' . $imageFileType; // Unique filename
+        $uploadOk = 1;
+
+        // Check if the uploaded file is an actual image
+        if (file_exists($_FILES["profile_picture"]["tmp_name"])) {
+            $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
+            if ($check === false) {
+                echo "File is not an image.";
+                $uploadOk = 0;
+            }
+        } else {
+            echo "Temporary file does not exist.";
+            $uploadOk = 0;
+        }
+
+        // Check file size
+        if ($_FILES["profile_picture"]["size"] > 500000) { // Limit to 500KB
+            echo "Sorry, your file is too large.";
+            $uploadOk = 0;
+        }
+
+        // Allow certain file formats
+        if (!in_array($imageFileType, ['jpg', 'jpeg', 'png', 'gif'])) {
+            echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+            $uploadOk = 0;
+        }
+
+        // Check if $uploadOk is set to 0 by an error
+        if ($uploadOk == 0) {
+            echo "Sorry, your file was not uploaded.";
+        } else {
+            // Try to upload the file
+            if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
+                // Update the profile picture in the database
+                $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
+                $stmt->bind_param("si", $target_file, $user_id);
+
+                if ($stmt->execute()) {
+                    echo "The file " . htmlspecialchars($original_file_name) . " has been uploaded and profile updated.";
+                } else {
+                    echo "Error updating database: " . $stmt->error;
+                }
+                $stmt->close();
+            } else {
+                echo "Sorry, there was an error uploading your file.";
+            }
+        }
+    }
+}
+
+// Handle artwork upload
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['artwork'])) {
+    $target_dir = "artworks/"; // Specify your artwork upload directory
+    if (!is_dir($target_dir)) {
+        mkdir($target_dir, 0755, true); // Create directory if it doesn't exist
+    }
+
+    // Generate a unique filename
+    $original_file_name = basename($_FILES["artwork"]["name"]);
+    $artworkFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
+    $target_file = $target_dir . uniqid() . '.' . $artworkFileType; // Unique filename
+    $uploadOk = 1;
+
+    // Check if file is an actual image or video
+    if (file_exists($_FILES["artwork"]["tmp_name"])) {
+        $check = getimagesize($_FILES["artwork"]["tmp_name"]);
+        if ($check === false && !in_array($artworkFileType, ['mp4', 'mov', 'avi'])) {
+            echo "File is not a valid image or video.";
+            $uploadOk = 0;
+        }
+    } else {
+        echo "Temporary file does not exist.";
         $uploadOk = 0;
     }
 
-    // Check if file already exists
-    if (file_exists($target_file)) {
-        echo "Sorry, file already exists.";
-        $uploadOk = 0;
-    }
-
-    // Check file size
-    if ($_FILES["profile_picture"]["size"] > 500000) { // Limit to 500KB
+    // Check file size (limit to 5MB for artwork)
+    if ($_FILES["artwork"]["size"] > 5000000) { 
         echo "Sorry, your file is too large.";
         $uploadOk = 0;
     }
 
     // Allow certain file formats
-    if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif") {
-        echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+    if (!in_array($artworkFileType, ['jpg', 'png', 'jpeg', 'gif', 'mp4', 'mov', 'avi'])) {
+        echo "Sorry, only JPG, JPEG, PNG, GIF, MP4, MOV & AVI files are allowed.";
         $uploadOk = 0;
     }
 
@@ -118,17 +202,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_picture'])) {
         echo "Sorry, your file was not uploaded.";
     } else {
         // If everything is ok, try to upload file
-        if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
-            // Update the profile picture in the database
-            $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
+        if (move_uploaded_file($_FILES["artwork"]["tmp_name"], $target_file)) {
+            // Update the artwork_file in the artwork table
+            $stmt = $conn->prepare("UPDATE artwork SET artwork_file = ? WHERE id = ?");
             $stmt->bind_param("si", $target_file, $user_id);
 
             if ($stmt->execute()) {
-                echo "The file ". htmlspecialchars(basename($_FILES["profile_picture"]["name"])). " has been uploaded.";
-                header("Location: " . $_SERVER['PHP_SELF']); // Redirect to the same page
-                exit();
+                echo "The file " . htmlspecialchars($original_file_name) . " has been uploaded.";
             } else {
-                echo "Error updating database: " . $stmt->error;
+                echo "Error saving artwork path to database: " . $stmt->error;
             }
             $stmt->close();
         } else {
@@ -137,33 +219,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_picture'])) {
     }
 }
 
-// Fetch messages for the logged-in user (replaces $all_messages_result section)
-$sql = "SELECT * FROM messages WHERE sender_id = ? OR recipient_id = ? ORDER BY created_at DESC";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $user_id, $user_id);
-$stmt->execute();
-$all_messages_result = $stmt->get_result();
-
-
-// Fetch followers of the artist
-$followers_sql = "SELECT u.id, u.username FROM fans f JOIN users u ON f.follower_id = u.id WHERE f.followed_id = ?";
-$followers_stmt = $conn->prepare($followers_sql);
-$followers_stmt->bind_param("i", $user_id);
-$followers_stmt->execute();
-$followers_result = $followers_stmt->get_result();
-
-// Get the total number of followers
-$total_followers_sql = "SELECT COUNT(*) as total_followers FROM fans WHERE followed_id = ?";
-$total_followers_stmt = $conn->prepare($total_followers_sql);
-$total_followers_stmt->bind_param("i", $user_id);
-$total_followers_stmt->execute();
-$total_followers_result = $total_followers_stmt->get_result();
-$total_followers = $total_followers_result->fetch_assoc()['total_followers'];
-
-$stmt->close();
+// Close the database connection
 $conn->close();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -171,140 +229,8 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artist Dashboard</title>
     <link rel="stylesheet" href="art.css">
+    <link rel="stylesheet" href="artist.css">
     <script type="text/javascript" src="artist.js"></script>
-    <style>
-        /* Add your existing styles here */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #ff9a00, #ff3d00);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        .sidebar {
-            width: 300px;
-            background: linear-gradient(45deg, #ff9a00, #ff3d00);
-            color: white;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar a {
-            display: block;
-            color: white;
-            padding: 15px 10px;
-            text-decoration: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            transition: background-color 0.3s;
-        }
-
-        .sidebar a:hover, .sidebar a.active {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .content {
-            flex: 1;
-            padding: 40px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            margin: auto;
-            overflow-y: auto;
-            max-width: 800px;
-        }
-
-        .content-section {
-            display: none;
-        }
-
-        .content-section.active {
-            display: block;
-        }
-
-        .profile-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: auto;
-            width: 100%;
-        }
-
-        .profile-container img {
-            width: 150px;
-            border-radius: 50%;
-            margin-bottom: 20px;
-        }
-
-        .profile-container label {
-            font-weight: bold;
-            color: #3e3e3e;
-        }
-
-        .profile-container input,
-        .profile-container textarea {
-            width: 100%;
-            padding: 12px 20px;
-            margin: 10px 0;
-            border: 2px solid #ff3d00;
-            border-radius: 10px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .profile-container input:focus, 
-        .profile-container textarea:focus {
-            border-color: #ff9a00;
-            outline: none;
-        }
-
-        .followers-list {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .follower-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        .messages-container {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-
-        .message {
-            margin: 5px 0;
-        }
-
-        .message.sent {
-            text-align: right;
-            color: green;
-        }
-
-        .message.received {
-            text-align: left;
-            color: blue;
-        }
-    </style>
 </head>
 <body>
 
@@ -322,13 +248,42 @@ $conn->close();
         <!-- Profile Section -->
         <div class="content-section active" id="profile">
             <div class="profile-container">
-                <img src="<?php echo $profile_picture; ?>" alt="Profile Picture">
-                <label for="bio">Bio:</label>
-                <textarea id="bio" readonly><?php echo $bio; ?></textarea>
+                <div>
+                    <?php if (!empty($profile_picture)): ?>
+                        <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture" style="width: 150px; height: auto; margin-bottom: 20px;">
+                    <?php else: ?>
+                        <p>No profile picture uploaded.</p>
+                    <?php endif; ?>
+                </div>
+
                 <form method="post" enctype="multipart/form-data">
                     <label for="profile_picture">Upload New Profile Picture:</label>
                     <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
                     <input type="submit" value="Upload">
+
+                    <label for="bio">Bio:</label>
+                    <textarea id="bio" name="bio" required><?php echo htmlspecialchars($bio); ?></textarea>
+
+                    <label for="artwork">Upload Artwork (Image/Video):</label>
+                    <input type="file" name="artwork" id="artwork" accept="image/*,video/*">
+                    <input type="submit" name="upload_artwork" value="Upload Artwork">
+
+                    <label for="x_link">X Link:</label>
+                    <input type="url" id="x_link" name="x_link" value="<?php echo htmlspecialchars($x_link); ?>">
+
+                    <label for="instagram_link">Instagram Link:</label>
+                    <input type="url" id="instagram_link" name="instagram_link" value="<?php echo htmlspecialchars($instagram_link); ?>">
+
+                    <label for="facebook_link">Facebook Link:</label>
+                    <input type="url" id="facebook_link" name="facebook_link" value="<?php echo htmlspecialchars($facebook_link); ?>">
+
+                    <label for="linkedin_link">LinkedIn Link:</label>
+                    <input type="url" id="linkedin_link" name="linkedin_link" value="<?php echo htmlspecialchars($linkedin_link); ?>">
+
+                    <label for="tiktok_link">TikTok Link:</label>
+                    <input type="url" id="tiktok_link" name="tiktok_link" placeholder="Enter your TikTok link here" value="<?php echo htmlspecialchars($tiktok_link); ?>">
+
+                    <input type="submit" name="save_changes" value="Save Changes">
                 </form>
             </div>
         </div>
@@ -345,15 +300,14 @@ $conn->close();
 
             <h4>Messages:</h4>
             <div class="messages-container">
-    <?php while ($message = $all_messages_result->fetch_assoc()): ?>
-        <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
-            <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
-            <p><?php echo htmlspecialchars($message['message']); ?></p>
-            <small><?php echo $message['created_at']; ?></small>
-        </div>
-    <?php endwhile; ?>
-</div>
-
+                <?php while ($message = $all_messages_result->fetch_assoc()): ?>
+                    <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
+                        <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
+                        <p><?php echo htmlspecialchars($message['message']); ?></p>
+                        <small><?php echo $message['created_at']; ?></small>
+                    </div>
+                <?php endwhile; ?>
+            </div>
         </div>
 
         <!-- Partnership Section -->
@@ -396,87 +350,5 @@ $conn->close();
         </div>
     </div>
 </div>
-
-<script>
-    // Initialize WebSocket connection
-    const socket = new WebSocket('ws://localhost:8080');
-
-    socket.onopen = function() {
-        console.log("Artist connected to WebSocket server");
-    };
-
-    // Handle incoming messages from audience
-    socket.onmessage = function(event) {
-        const messageData = JSON.parse(event.data);
-        if (messageData.sender_id === document.querySelector('input[name="receiver_id"]').value) {
-            displayMessage(messageData.message, 'received');
-        }
-    };
-
-    // Function to display messages in the chat window
-    function displayMessage(message, type) {
-        const chatBox = document.getElementById('chat-box');
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', type);
-        messageDiv.textContent = message;
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    // JavaScript for handling tab navigation
-    document.querySelectorAll('.sidebar a').forEach(link => {
-        link.addEventListener('click', function(event) {
-            event.preventDefault();
-
-            // Hide all sections and remove active class from sidebar links
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.querySelectorAll('.sidebar a').forEach(item => {
-                item.classList.remove('active');
-            });
-
-            // Show the selected section and set the link as active
-            document.querySelector(this.getAttribute('href')).classList.add('active');
-            this.classList.add('active');
-        });
-    });
-
-    // Function to start a conversation with a selected follower
-    function startConversation(followerId) {
-        document.querySelector('input[name="receiver_id"]').value = followerId;
-        
-        // Display chat section and hide others
-        document.querySelector('#collaboration').classList.add('active');
-        document.querySelector('#profile').classList.remove('active');
-        document.querySelector('#partnership').classList.remove('active');
-        document.querySelector('#followers').classList.remove('active');
-    }
-
-    // Send message functionality for two-way chat
-    document.getElementById('message-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const messageInput = document.getElementById('message');
-        const message = messageInput.value;
-        const receiverId = document.querySelector('input[name="receiver_id"]').value;
-
-        if (message && receiverId) {
-            // Send message to WebSocket server
-            socket.send(JSON.stringify({
-                sender_id: 'artist_id',  // Replace with actual artist ID variable
-                receiver_id: receiverId,
-                message: message
-            }));
-
-            // Display the sent message in chat
-            displayMessage(message, 'sent');
-            messageInput.value = ''; // Clear input field
-        }
-    });
-</script>
-
-
-
 </body>
 </html>

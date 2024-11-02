@@ -52,6 +52,42 @@ $followedArtists = [];
 while ($row = $followedArtistsResult->fetch_assoc()) {
     $followedArtists[] = $row['followed_id'];
 }
+
+// Fetch messages for the selected artist (if applicable)
+$messages = [];
+if (isset($_POST['artist_id'])) {
+    $artistId = $_POST['artist_id'];
+
+    $messagesSql = "SELECT m.message, m.timestamp, u.username 
+                    FROM messages m 
+                    JOIN users u ON m.sender_id = u.id 
+                    WHERE (m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?)
+                    ORDER BY m.timestamp ASC";
+    
+    $messagesStmt = $conn->prepare($messagesSql);
+    $messagesStmt->bind_param('iiii', $id, $artistId, $artistId, $id);
+    $messagesStmt->execute();
+    $messagesResult = $messagesStmt->get_result();
+
+    while ($row = $messagesResult->fetch_assoc()) {
+        $messages[] = $row;
+    }
+}
+
+// Handle message sending
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
+    $message = $_POST['message'];
+    $artistId = $_POST['artist_id'];
+
+    // Insert message into the database
+    $insertSql = "INSERT INTO messages (sender_id, recipient_id, message) VALUES (?, ?, ?)";
+    $insertStmt = $conn->prepare($insertSql);
+    $insertStmt->bind_param('iis', $id, $artistId, $message);
+    $insertStmt->execute();
+
+    echo json_encode(['success' => true, 'message' => 'Message sent']);
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -111,21 +147,14 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
 <div class="container">
     <!-- Sidebar for navigation -->
     <div class="sidebar">
-        <a href="#" onclick="showSection('profile')">Profile</a>
+        <a href="#" onclick="showSection('browse-artists')">Browse Artists</a>
         <a href="#" onclick="showSection('followed-artists')">Followed Artists</a>
         <a href="#" onclick="showSection('events')">Events</a>
         <a href="#" onclick="showSection('messages')">Messages</a>
-        <a href="#" onclick="showSection('browse-artists')">Browse Artists</a>
     </div>
 
     <!-- Main content area -->
     <div class="content">
-        <!-- Profile Section -->
-        <div id="profile" class="section">
-            <h2>Your Profile</h2>
-            <p>Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>! This is your profile page.</p>
-        </div>
-
         <!-- Followed Artists Section -->
         <div id="followed-artists" class="section">
             <h2>Followed Artists</h2>
@@ -144,6 +173,7 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
                             <div class="artist">
                                 <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
                                 <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
+                                <button onclick="startChat(<?php echo $artist['id']; ?>)">Message</button>
                             </div>
                             <?php
                         }
@@ -165,7 +195,20 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
         <div id="messages" class="section">
             <h2>Your Messages</h2>
             <div id="chat-box">
-                <!-- Display chat messages here -->
+                <?php
+                // Display fetched messages if they exist
+                if (!empty($messages)) {
+                    foreach ($messages as $message) {
+                        $class = ($message['sender_id'] == $id) ? 'sent' : 'received';
+                        ?>
+                        <div class="message <?php echo $class; ?>">
+                            <strong><?php echo htmlspecialchars($message['username']); ?>:</strong> <?php echo htmlspecialchars($message['message']); ?>
+                            <span class="timestamp"><?php echo date('Y-m-d H:i', strtotime($message['timestamp'])); ?></span>
+                        </div>
+                        <?php
+                    }
+                }
+                ?>
             </div>
             <form id="message-form">
                 <input type="hidden" id="artist_id" name="artist_id" value="">
@@ -187,9 +230,10 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
                         <div class="artist">
                             <img src="uploads/<?php echo htmlspecialchars($artist['profile_picture']); ?>" alt="Artist Picture">
                             <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
-                            <form id="follow-form-<?php echo $artist['id']; ?>">
+                            <form id="follow-form-<?php echo $artist['id']; ?>" method="POST">
+                                <input type="hidden" name="artist_id" value="<?php echo $artist['id']; ?>">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> <!-- CSRF Token -->
-                                <button type="button" onclick="followArtist(<?php echo $artist['id']; ?>)" data-following="false">Follow</button>
+                                <button type="button" onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
                             </form>
                             <button onclick="startChat(<?php echo $artist['id']; ?>)">Message</button>
                         </div>
@@ -205,6 +249,26 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
 </div>
 
 <script>
+// WebSocket connection
+const conn = new WebSocket('ws://localhost:8080');
+
+conn.onopen = function() {
+    console.log("WebSocket connection established!");
+};
+
+conn.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    const chatBox = document.getElementById('chat-box');
+    
+    // Display the received message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message received';
+    messageDiv.innerHTML = `<strong>${data.sender_username}:</strong> ${data.message} <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>`;
+    chatBox.appendChild(messageDiv);
+    chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+};
+
+// Show a specific section
 function showSection(sectionId) {
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => {
@@ -213,72 +277,68 @@ function showSection(sectionId) {
     document.getElementById(sectionId).classList.add('active');
 }
 
-// Function to follow artist
-function followArtist(artistId) {
-    const csrfToken = document.querySelector(`#follow-form-${artistId} input[name="csrf_token"]`).value; // Get CSRF token
+// Start chat with the selected artist
+function startChat(artistId) {
+    document.getElementById('artist_id').value = artistId; // Set artist ID in the form
+    showSection('messages'); // Show messages section
 
-    fetch('follow.php', {
+    // Optionally fetch messages for the selected artist
+    fetch('messages.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
             artist_id: artistId,
-            csrf_token: csrfToken // Pass CSRF token here
+            csrf_token: document.querySelector('input[name="csrf_token"]').value // Include CSRF token
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const followButton = document.querySelector(`#follow-form-${artistId} button`);
-            followButton.innerText = 'Following';
-            followButton.disabled = true; // Disable button after following
+            // Display messages in the chat box
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = ''; // Clear existing messages
+            data.messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ' + (msg.sender_id == <?php echo $id; ?> ? 'sent' : 'received');
+                messageDiv.innerHTML = `<strong>${msg.username}:</strong> ${msg.message} <span class="timestamp">${new Date(msg.timestamp).toLocaleString()}</span>`;
+                chatBox.appendChild(messageDiv);
+            });
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
         } else {
-            alert(data.message);
+            alert(data.message); // Handle error
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(err => console.error('Error:', err));
 }
-        // Initialize WebSocket connection
-        const socket = new WebSocket('ws://localhost:8080');
 
-        socket.onopen = function() {
-            console.log("Connected to WebSocket server");
-        };
+// Send message
+document.getElementById('message-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const messageInput = document.getElementById('message');
+    const message = messageInput.value;
+    const artistId = document.getElementById('artist_id').value;
 
-        socket.onmessage = function(event) {
-            const chatBox = document.getElementById('chat-box');
-            const receivedMessage = document.createElement('div');
-            receivedMessage.className = 'message received';
-            receivedMessage.textContent = event.data;
-            chatBox.appendChild(receivedMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        };
+    // Display the sent message immediately
+    const sentMessage = document.createElement('div');
+    sentMessage.className = 'message sent';
+    sentMessage.innerHTML = `<strong>You:</strong> ${message}`;
+    document.getElementById('chat-box').appendChild(sentMessage);
+    document.getElementById('chat-box').scrollTop = chatBox.scrollHeight; // Scroll to the bottom
 
-        // Function to send a message
-        document.getElementById('message-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const messageInput = document.getElementById('message');
-            const message = messageInput.value;
-            const artistId = document.getElementById('artist_id').value;
+    // Send message via WebSocket
+    const messageData = {
+        sender_id: <?php echo $id; ?>,
+        recipient_id: artistId,
+        sender_username: "You", // Replace with actual username if available
+        message: message,
+        timestamp: new Date().toISOString() // Current timestamp
+    };
+    conn.send(JSON.stringify(messageData)); // Send the message via WebSocket
 
-            // Send message via WebSocket
-            socket.send(JSON.stringify({ artist_id: artistId, message }));
-
-            // Display sent message
-            const chatBox = document.getElementById('chat-box');
-            const sentMessage = document.createElement('div');
-            sentMessage.className = 'message sent';
-            sentMessage.textContent = message;
-            chatBox.appendChild(sentMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            messageInput.value = '';
-        });
-    </script>
-</body>
-</html>
-
+    messageInput.value = ''; // Clear input field
+});
 </script>
 </body>
 </html>

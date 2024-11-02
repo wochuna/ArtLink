@@ -1,32 +1,54 @@
-// JavaScript to toggle content based on link clicked
-document.getElementById('profile-link').addEventListener('click', function() {
-    setActiveSection('profile-section');
+// Function to handle sidebar link clicks
+document.querySelectorAll('.sidebar a').forEach(link => {
+    link.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent default anchor behavior
+
+        // Get the target section ID from the href attribute
+        const targetId = this.getAttribute('href');
+
+        // Smooth scroll to the target section
+        const targetElement = document.querySelector(targetId);
+        const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+
+        window.scrollTo({
+            top: elementPosition,
+            behavior: 'smooth'
+        });
+
+        // Hide all content sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Show the target content section
+        targetElement.classList.add('active');
+
+        // Update active link in sidebar
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
 });
 
-document.getElementById('collaboration-link').addEventListener('click', function() {
-    setActiveSection('collaboration-section');
-});
+// Function to start a conversation (if needed)
+function startConversation(followerId) {
+    const messageSection = document.getElementById('collaboration');
+    const messageInput = messageSection.querySelector('#message');
+    messageInput.value = `Hello!`; // Pre-fill the message input
 
-document.getElementById('partnership-link').addEventListener('click', function() {
-    setActiveSection('partnership-section');
-});
+    // Optionally, switch to the collaboration section
+    setActiveSection('collaboration');
+}
 
-document.getElementById('messages-link').addEventListener('click', function() {
-    setActiveSection('messages-section');
-});
-
+// Function to set the active section (if needed)
 function setActiveSection(sectionId) {
     // Remove active class from all sections
     var sections = document.getElementsByClassName('content-section');
     for (var i = 0; i < sections.length; i++) {
         sections[i].classList.remove('active');
     }
-    
-    // Hide all sidebar links
-    var links = document.querySelectorAll('.sidebar a');
-    links.forEach(link => link.classList.remove('active'));
 
-    // Set active class on the selected section and link
+    // Set active class on the selected section
     document.getElementById(sectionId).classList.add('active');
-    document.getElementById(sectionId.split('-')[0] + '-link').classList.add('active');
 }
