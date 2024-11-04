@@ -1,54 +1,26 @@
-// Function to handle sidebar link clicks
-document.querySelectorAll('.sidebar a').forEach(link => {
-    link.addEventListener('click', function(event) {
-        event.preventDefault(); // Prevent default anchor behavior
+function showSection(sectionId) {
+    // Hide all sections
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(section => section.classList.remove('active'));
 
-        // Get the target section ID from the href attribute
-        const targetId = this.getAttribute('href');
-
-        // Smooth scroll to the target section
-        const targetElement = document.querySelector(targetId);
-        const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
-
-        window.scrollTo({
-            top: elementPosition,
-            behavior: 'smooth'
-        });
-
-        // Hide all content sections
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-
-        // Show the target content section
-        targetElement.classList.add('active');
-
-        // Update active link in sidebar
-        document.querySelectorAll('.sidebar a').forEach(link => {
-            link.classList.remove('active');
-        });
-        this.classList.add('active');
-    });
-});
-
-// Function to start a conversation (if needed)
-function startConversation(followerId) {
-    const messageSection = document.getElementById('collaboration');
-    const messageInput = messageSection.querySelector('#message');
-    messageInput.value = `Hello!`; // Pre-fill the message input
-
-    // Optionally, switch to the collaboration section
-    setActiveSection('collaboration');
-}
-
-// Function to set the active section (if needed)
-function setActiveSection(sectionId) {
-    // Remove active class from all sections
-    var sections = document.getElementsByClassName('content-section');
-    for (var i = 0; i < sections.length; i++) {
-        sections[i].classList.remove('active');
+    // Show the selected section
+    const activeSection = document.getElementById(sectionId);
+    if (activeSection) {
+        activeSection.classList.add('active');
     }
 
-    // Set active class on the selected section
-    document.getElementById(sectionId).classList.add('active');
+    // Update active link styling
+    const links = document.querySelectorAll('.sidebar a');
+    links.forEach(link => link.classList.remove('active'));
+    const activeLink = document.querySelector(`.sidebar a[onclick="showSection('${sectionId}')"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+}
+
+// Start conversation function (if needed)
+function startConversation(followerId) {
+    // Logic to initiate a conversation with the follower
+    document.getElementById('artist_id').value = followerId; // Set artist ID in the form
+    showSection('messages'); // Show messages section
 }

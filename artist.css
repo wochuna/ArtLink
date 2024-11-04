@@ -33,6 +33,7 @@ body {
 
 .sidebar a:hover, .sidebar a.active {
     background: rgba(255, 255, 255, 0.2);
+    color: #ff3d00;
 }
 
 .content {
@@ -82,13 +83,14 @@ body {
     border-radius: 10px;
     box-sizing: border-box;
     font-size: 16px;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .profile-container input:focus, 
 .profile-container textarea:focus {
     border-color: #ff9a00;
     outline: none;
+    box-shadow: 0 0 5px rgba(255, 157, 0, 0.5);
 }
 
 .followers-list {
@@ -127,4 +129,18 @@ body {
 .message.received {
     text-align: left;
     color: blue;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+    }
+    .content {
+        padding: 20px;
+    }
 }
