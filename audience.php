@@ -294,7 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
     </div>
 </div>
 <script>
-    // WebSocket connection
+// WebSocket connection
 const conn = new WebSocket('ws://localhost:8080');
 
 conn.onopen = function() {
@@ -309,6 +309,7 @@ conn.onclose = function() {
     console.log("WebSocket connection closed");
 };
 
+// Handle incoming messages
 conn.onmessage = function(event) {
     const data = JSON.parse(event.data);
     const chatBox = document.getElementById('chat-box');
@@ -318,7 +319,7 @@ conn.onmessage = function(event) {
         messageDiv.className = 'message received';
         messageDiv.innerHTML = `<strong>${data.sender_username}:</strong> ${data.message} <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>`;
         chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom of the chat
     } else {
         console.error("Chat box not found");
     }
@@ -343,7 +344,7 @@ function startChat(artistId) {
 
     fetch('messages.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             artist_id: artistId,
             csrf_token: document.querySelector('input[name="csrf_token"]').value
@@ -361,7 +362,7 @@ function startChat(artistId) {
                     messageDiv.innerHTML = `<strong>${msg.username}:</strong> ${msg.message} <span class="timestamp">${new Date(msg.timestamp).toLocaleString()}</span>`;
                     chatBox.appendChild(messageDiv);
                 });
-                chatBox.scrollTop = chatBox.scrollHeight;
+                chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
             } else {
                 console.error("Chat box not found");
             }
@@ -378,7 +379,7 @@ function followArtist(artistId) {
 
     fetch('follow.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             artist_id: artistId,
             csrf_token: document.querySelector(`#follow-form-${artistId} input[name="csrf_token"]`).value
@@ -401,34 +402,39 @@ if (messageForm) {
     messageForm.addEventListener('submit', function(event) {
         event.preventDefault();
         const messageInput = document.getElementById('message');
-        const message = messageInput.value;
+        const message = messageInput.value.trim(); // Trim whitespace
         const artistId = document.getElementById('artist_id').value;
         const chatBox = document.getElementById('chat-box');
-        
-        if (chatBox) {
-            const sentMessage = document.createElement('div');
-            sentMessage.className = 'message sent';
-            sentMessage.innerHTML = `<strong>You:</strong> ${message}`;
-            chatBox.appendChild(sentMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        } else {
-            console.error("Chat box not found");
-        }
 
-        const messageData = {
-            sender_id: <?php echo $id; ?>,
-            recipient_id: artistId,
-            sender_username: "You",
-            message: message,
-            timestamp: new Date().toISOString()
-        };
-        
-        conn.send(JSON.stringify(messageData));
-        messageInput.value = '';
+        if (message) { // Check if message is not empty
+            if (chatBox) {
+                const sentMessage = document.createElement('div');
+                sentMessage.className = 'message sent';
+                sentMessage.innerHTML = `<strong>You:</strong> ${message} <span class="timestamp">${new Date().toLocaleString()}</span>`;
+                chatBox.appendChild(sentMessage);
+                chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+            } else {
+                console.error("Chat box not found");
+            }
+
+            const messageData = {
+                sender_id: <?php echo $id; ?>,
+                recipient_id: artistId,
+                sender_username: "You",
+                message: message,
+                timestamp: new Date().toISOString()
+            };
+
+            conn.send(JSON.stringify(messageData)); // Send message through WebSocket
+            messageInput.value = ''; // Clear input field
+        } else {
+            console.error("Message is empty, not sending.");
+        }
     });
 } else {
     console.error("Message form not found");
 }
 </script>
+
 </body>
 </html>
