@@ -283,7 +283,6 @@ $conn->close();
         <a href="#" onclick="showSection('collaboration')">Collaboration</a>
         <a href="#" onclick="showSection('partnership')">Partnership</a>
         <a href="#" onclick="showSection('followers')">Followers</a>
-        <a href="#" onclick="showSection('messages')">Messages</a> 
     </nav>
 
     <div class="content">
@@ -332,32 +331,16 @@ $conn->close();
             </div>
         </div>
 
-<!-- Collaboration Section -->
-<div class="content-section" id="collaboration">
-    <h3>Collaborate with Me</h3>
-    <form method="post" action="">
-        <label for="message">Send a Message:</label>
-        <input type="hidden" name="recipient_id" value="<?php echo $user_id; ?>">
-        <textarea id="message" name="message" required></textarea>
-        <input type="submit" name="send_message" value="Send">
-    </form>
-
-    <h4>Messages:</h4>
-    <div class="messages-container">
-        <?php if (isset($all_messages_result) && $all_messages_result->num_rows > 0): ?>
-            <?php while ($message = $all_messages_result->fetch_assoc()): ?>
-                <div class="message <?php echo ($message['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
-                    <strong><?php echo ($message['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
-                    <p><?php echo htmlspecialchars($message['message']); ?></p>
-                    <small><?php echo $message['created_at']; ?></small>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <p>No messages found.</p>
-        <?php endif; ?>
-    </div>
-</div>
-
+        <!-- Collaboration Section -->
+        <div class="content-section" id="collaboration">
+            <h3>Collaborate with Me</h3>
+            <form method="post" action="">
+                <label for="message">Send a Message:</label>
+                <input type="hidden" name="recipient_id" value="<?php echo $user_id; ?>">
+                <textarea id="message" name="message" required></textarea>
+                <input type="submit" name="send_message" value="Send">
+            </form>
+        </div>
 
         <!-- Partnership Section -->
         <div class="content-section" id="partnership">
@@ -371,40 +354,27 @@ $conn->close();
             </form>
         </div>
 
-        <!-- Followers Section -->
-        <div class="content-section" id="followers">
-            <h3>Your Followers (<?php echo $total_followers; ?>)</h3>
-            <div class="followers-list">
-                <?php while ($follower = $followers_result->fetch_assoc()) : ?>
-                    <div class="follower-item">
-                        <span><?php echo htmlspecialchars($follower['username']); ?></span>
-                        <button onclick="startConversation(<?php echo $follower['id']; ?>)">Message</button>
-                    </div>
-                <?php endwhile; ?>
+       <!-- Followers Section -->
+<div class="content-section" id="followers">
+    <h3>Your Followers</h3>
+    <div class="followers-list">
+        <!-- Display total number of followers -->
+        <p><strong>Total Followers:</strong> <?php echo $total_followers; ?></p>
+
+        <!-- Loop through followers and display each one -->
+        <?php while ($follower = $followers_result->fetch_assoc()) : ?>
+            <div class="follower-item">
+                <span><?php echo htmlspecialchars($follower['username']); ?></span>
+                <button onclick="startConversation(<?php echo $follower['id']; ?>)">Message</button>
             </div>
-        </div>
-
-       <!-- Messages Section -->
-<div class="content-section" id="messages">
-    <h3>Your Messages</h3>
-    <div class="messages-container">
-        <?php if (isset($all_messages_result) && $all_messages_result->num_rows > 0): ?>
-            <?php while ($msg = $all_messages_result->fetch_assoc()): ?>
-                <div class="message <?php echo ($msg['sender_id'] == $user_id) ? 'sent' : 'received'; ?>">
-                    <strong><?php echo ($msg['sender_id'] == $user_id) ? 'You' : 'Follower'; ?>:</strong>
-                    <p><?php echo htmlspecialchars($msg['message']); ?></p>
-                    <small><?php echo $msg['created_at']; ?></small>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <p>No messages found.</p>
-        <?php endif; ?>
+        <?php endwhile; ?>
     </div>
 </div>
 
-        </div>
-    </div>
-</div>
 
+<script> 
+const yourSenderId = <?php echo json_encode($currentUserId); ?>;
+const yourSenderUsername = <?php echo json_encode($currentUsername); ?>;
+</script>
 </body>
 </html>

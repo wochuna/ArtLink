@@ -293,31 +293,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
         </div>
     </div>
 </div>
+
+<script> 
+const yourSenderId = <?php echo json_encode($currentUserId); ?>;
+    const yourSenderUsername = <?php echo json_encode($currentUsername); ?>;
+</script>
+
 <script>
 // WebSocket connection
-const conn = new WebSocket('ws://localhost:8080');
+const conn = new WebSocket('ws://localhost:8080'); // Replace with your WebSocket server URL and port
 
-conn.onopen = function() {
+// WebSocket events
+conn.onopen = function () {
     console.log("WebSocket connection established!");
 };
 
-conn.onerror = function(error) {
+conn.onerror = function (error) {
     console.error("WebSocket Error: ", error);
 };
 
-conn.onclose = function() {
+conn.onclose = function () {
     console.log("WebSocket connection closed");
 };
 
 // Handle incoming messages
-conn.onmessage = function(event) {
+conn.onmessage = function (event) {
     const data = JSON.parse(event.data);
     const chatBox = document.getElementById('chat-box');
-    
+    const currentUserId = <?php echo $id; ?>; // Replace with actual PHP user ID
+
     if (chatBox) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message received';
-        messageDiv.innerHTML = `<strong>${data.sender_username}:</strong> ${data.message} <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>`;
+        
+        // Distinguish between sent and received messages
+        messageDiv.className = data.sender_id === currentUserId ? 'message sent' : 'message received';
+        messageDiv.innerHTML = `<strong>${data.sender_id === currentUserId ? "You" : data.sender_username}:</strong> ${data.message} <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>`;
+        
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom of the chat
     } else {
@@ -355,11 +366,11 @@ function startChat(artistId) {
         if (data.success) {
             const chatBox = document.getElementById('chat-box');
             if (chatBox) {
-                chatBox.innerHTML = '';
+                chatBox.innerHTML = ''; // Clear existing messages
                 data.messages.forEach(msg => {
                     const messageDiv = document.createElement('div');
-                    messageDiv.className = 'message ' + (msg.sender_id == <?php echo $id; ?> ? 'sent' : 'received');
-                    messageDiv.innerHTML = `<strong>${msg.username}:</strong> ${msg.message} <span class="timestamp">${new Date(msg.timestamp).toLocaleString()}</span>`;
+                    messageDiv.className = 'message ' + (msg.sender_id == currentUserId ? 'sent' : 'received');
+                    messageDiv.innerHTML = `<strong>${msg.sender_id == currentUserId ? "You" : msg.username}:</strong> ${msg.message} <span class="timestamp">${new Date(msg.timestamp).toLocaleString()}</span>`;
                     chatBox.appendChild(messageDiv);
                 });
                 chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
@@ -399,12 +410,13 @@ function followArtist(artistId) {
 // Send message
 const messageForm = document.getElementById('message-form');
 if (messageForm) {
-    messageForm.addEventListener('submit', function(event) {
+    messageForm.addEventListener('submit', function (event) {
         event.preventDefault();
         const messageInput = document.getElementById('message');
         const message = messageInput.value.trim(); // Trim whitespace
         const artistId = document.getElementById('artist_id').value;
         const chatBox = document.getElementById('chat-box');
+        const currentUserId = <?php echo $id; ?>; // Ensure this is replaced with actual user ID from PHP
 
         if (message) { // Check if message is not empty
             if (chatBox) {
@@ -418,7 +430,7 @@ if (messageForm) {
             }
 
             const messageData = {
-                sender_id: <?php echo $id; ?>,
+                sender_id: currentUserId,
                 recipient_id: artistId,
                 sender_username: "You",
                 message: message,
@@ -434,6 +446,7 @@ if (messageForm) {
 } else {
     console.error("Message form not found");
 }
+
 </script>
 
 </body>

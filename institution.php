@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audience Dashboard</title>
+    <title>Artistic Institution Dashboard</title>
     <link rel="stylesheet" href="art.css"> 
     <link rel="stylesheet" href="audience.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
