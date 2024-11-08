@@ -1,31 +1,26 @@
 <?php
-// Start session to track logged-in user
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 session_start();
 
-// Check if the user is logged in
 if (!isset($_SESSION['id'])) {
     echo "User not logged in. Please log in to edit your profile.";
     exit();
 }
 
-// Database connection details
 $servername = "localhost";
 $dbUsername = "root";
 $dbPassword = "";
 $dbName = "artlink_entertainment";
-
-// Create connection
 $conn = new mysqli($servername, $dbUsername, $dbPassword, $dbName);
 
-// Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Get the user ID from the session
 $user_id = $_SESSION['id'];
 
-// Fetch the artist profile details from the database
+// Fetch the artist profile details
 $sql = "SELECT * FROM artwork WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
@@ -59,200 +54,162 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $recipient_check_result = $recipient_check->get_result();
 
     if ($recipient_check_result->num_rows === 0) {
-        echo "Error: Invalid recipient user ID.";
+        echo "<p>Error: Invalid recipient user ID.</p>";
     } else {
         // Insert message
         $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, message, created_at) VALUES (?, ?, ?, NOW())");
         $stmt->bind_param("iis", $user_id, $receiver_id, $message);
         if ($stmt->execute()) {
-            echo "Message sent successfully!";
+            echo "<p>Message sent successfully!</p>";
         } else {
-            echo "Error: " . $stmt->error;
+            echo "<p>Error: " . $stmt->error . "</p>";
         }
         $stmt->close();
     }
     $recipient_check->close();
 }
-// Check if recipient_id is set in the URL parameters
-if (isset($_GET['recipient_id'])) {
-    $recipient_id = $_GET['recipient_id']; // Get recipient ID from query parameter
 
-    // SQL query to fetch messages between the user and the recipient
-    $sql = "SELECT * FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
-    $stmt = $conn->prepare($sql);
-
-    // Check if the statement prepared successfully
-    if ($stmt) {
-        // Bind parameters (current user ID and recipient ID pairs)
-        $stmt->bind_param("iiii", $user_id, $recipient_id, $recipient_id, $user_id);
-
-        // Execute the query and fetch the result
-        if ($stmt->execute()) {
-            $all_messages_result = $stmt->get_result();
-
-            // Check if the result has messages
-            if ($all_messages_result->num_rows > 0) {
-                while ($row = $all_messages_result->fetch_assoc()) {
-                    $from = $row['sender_id'] === $user_id ? 'You' : 'Them';
-                    echo "<p><strong>{$from}:</strong> " . htmlspecialchars($row['message']) . "<br>";
-                    echo "<strong>Sent at:</strong> " . htmlspecialchars($row['created_at']) . "</p>";
-                }
-            } else {
-                echo "No messages found.";
-            }
-        } else {
-            echo "Error executing the SQL statement: " . $stmt->error;
-        }
-
-        // Close the statement after execution
-        $stmt->close();
-    } else {
-        echo "Error preparing the SQL statement: " . $conn->error;
-    }
-} else {
-    echo "Select a recipient to view messages.";
-}
-
-// Handle follower count and listing
+// Display follower count
 $follower_count_query = $conn->prepare("SELECT COUNT(*) AS total_followers FROM fans WHERE followed_id = ?");
 $follower_count_query->bind_param("i", $user_id);
 $follower_count_query->execute();
 $follower_count_result = $follower_count_query->get_result();
 $total_followers = $follower_count_result->fetch_assoc()['total_followers'] ?? 0;
 $follower_count_query->close();
-echo "Your Followers (" . $total_followers . ")<br>";
 
-$followers_query = $conn->prepare("SELECT users.username FROM users JOIN fans ON users.id = fans.follower_id WHERE fans.followed_id = ?");
+// Prepare followers data for JavaScript
+$followers_array = [];
+$followers_query = $conn->prepare("SELECT users.id, users.username FROM users JOIN fans ON users.id = fans.follower_id WHERE fans.followed_id = ?");
 $followers_query->bind_param("i", $user_id);
 $followers_query->execute();
 $followers_result = $followers_query->get_result();
-while ($follower = $followers_result->fetch_assoc()) {
-    echo "<p>" . htmlspecialchars($follower['username']) . "</p>";
-}
+
+if ($followers_result->num_rows > 0) {
+    while ($follower = $followers_result->fetch_assoc()) {
+        $followers_array[] = $follower; // Populate the array
+    }
+} 
 $followers_query->close();
+
+// Display messages for a selected recipient
+if (isset($_GET['recipient_id'])) {
+    $recipient_id = $_GET['recipient_id'];
+
+    // SQL query to fetch messages between the user and the recipient
+    $sql = "SELECT * FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param("iiii", $user_id, $recipient_id, $recipient_id, $user_id);
+        if ($stmt->execute()) {
+            $all_messages_result = $stmt->get_result();
+            $messages = [];
+            if ($all_messages_result->num_rows > 0) {
+                while ($row = $all_messages_result->fetch_assoc()) {
+                    $messages[] = $row; // Store messages for display
+                }
+            }
+        }
+        $stmt->close();
+    }
+} else {
+    $messages = []; // No messages to display
+}
 
 // Handle profile updates and file uploads...
 if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == UPLOAD_ERR_OK) {
-    $target_dir = "uploads/"; // Specify your upload directory
+    $target_dir = "uploads/";
     if (!is_dir($target_dir)) {
-        mkdir($target_dir, 0755, true); // Create directory if it doesn't exist
+        mkdir($target_dir, 0755, true);
     }
 
-    // Generate a unique filename
     $original_file_name = basename($_FILES["profile_picture"]["name"]);
     $imageFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
-    $target_file = $target_dir . uniqid() . '.' . $imageFileType; // Unique filename
+    $target_file = $target_dir . uniqid() . '.' . $imageFileType;
     $uploadOk = 1;
 
-    // Check if the uploaded file is an actual image
     if (file_exists($_FILES["profile_picture"]["tmp_name"])) {
         $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
         if ($check === false) {
             echo "File is not an image.";
             $uploadOk = 0;
         }
-    } else {
-        echo "Temporary file does not exist.";
-        $uploadOk = 0;
     }
 
-    // Check file size
-    if ($_FILES["profile_picture"]["size"] > 500000) { // Limit to 500KB
+    if ($_FILES["profile_picture"]["size"] > 500000) {
         echo "Sorry, your file is too large.";
         $uploadOk = 0;
     }
 
-    // Allow certain file formats
     if (!in_array($imageFileType, ['jpg', 'jpeg', 'png', 'gif'])) {
         echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
         $uploadOk = 0;
     }
 
-    // Check if $uploadOk is set to 0 by an error
     if ($uploadOk == 0) {
         echo "Sorry, your file was not uploaded.";
     } else {
-        // Try to upload the file
         if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
-            // Update the profile picture in the database
             $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
             $stmt->bind_param("si", $target_file, $user_id);
-
             if ($stmt->execute()) {
-                echo "The file " . htmlspecialchars($original_file_name) . " has been uploaded and profile updated.";
-            } else {
-                echo "Error updating database: " . $stmt->error;
+                echo "Profile picture updated.";
             }
             $stmt->close();
         } else {
-            echo "Sorry, there was an error uploading your file.";
+            echo "Error uploading your file.";
         }
     }
 }
 
 // Handle artwork upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['artwork'])) {
-$target_dir = "artworks/"; // Specify your artwork upload directory
-if (!is_dir($target_dir)) {
-    mkdir($target_dir, 0755, true); // Create directory if it doesn't exist
-}
+    $target_dir = "artworks/";
+    if (!is_dir($target_dir)) {
+        mkdir($target_dir, 0755, true);
+    }
 
-// Generate a unique filename
-$original_file_name = basename($_FILES["artwork"]["name"]);
-$artworkFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
-$target_file = $target_dir . uniqid() . '.' . $artworkFileType; // Unique filename
-$uploadOk = 1;
+    $original_file_name = basename($_FILES["artwork"]["name"]);
+    $artworkFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
+    $target_file = $target_dir . uniqid() . '.' . $artworkFileType;
+    $uploadOk = 1;
 
-// Check if file is an actual image or video
-if (file_exists($_FILES["artwork"]["tmp_name"])) {
-    $check = getimagesize($_FILES["artwork"]["tmp_name"]);
-    if ($check === false && !in_array($artworkFileType, ['mp4', 'mov', 'avi'])) {
-        echo "File is not a valid image or video.";
+    if (file_exists($_FILES["artwork"]["tmp_name"])) {
+        $check = getimagesize($_FILES["artwork"]["tmp_name"]);
+        if ($check === false && !in_array($artworkFileType, ['mp4', 'mov', 'avi'])) {
+            echo "File is not a valid image or video.";
+            $uploadOk = 0;
+        }
+    }
+
+    if ($_FILES["artwork"]["size"] > 5000000) {
+        echo "Sorry, your file is too large.";
         $uploadOk = 0;
     }
-} else {
-    echo "Temporary file does not exist.";
-    $uploadOk = 0;
-}
 
-// Check file size (limit to 5MB for artwork)
-if ($_FILES["artwork"]["size"] > 5000000) { 
-    echo "Sorry, your file is too large.";
-    $uploadOk = 0;
-}
-
-// Allow certain file formats
-if (!in_array($artworkFileType, ['jpg', 'png', 'jpeg', 'gif', 'mp4', 'mov', 'avi'])) {
-    echo "Sorry, only JPG, JPEG, PNG, GIF, MP4, MOV & AVI files are allowed.";
-    $uploadOk = 0;
-}
-
-// Check if $uploadOk is set to 0 by an error
-if ($uploadOk == 0) {
-    echo "Sorry, your file was not uploaded.";
-} else {
-    // If everything is ok, try to upload file
-    if (move_uploaded_file($_FILES["artwork"]["tmp_name"], $target_file)) {
-        // Update the artwork_file in the artwork table
-        $stmt = $conn->prepare("UPDATE artwork SET artwork_file = ? WHERE id = ?");
-        $stmt->bind_param("si", $target_file, $user_id);
-
-        if ($stmt->execute()) {
-            echo "The file " . htmlspecialchars($original_file_name) . " has been uploaded.";
-        } else {
-            echo "Error saving artwork path to database: " . $stmt->error;
-        }
-        $stmt->close();
-    } else {
-        echo "Sorry, there was an error uploading your file.";
+    if (!in_array($artworkFileType, ['jpg', 'png', 'jpeg', 'gif', 'mp4', 'mov', 'avi'])) {
+        echo "Sorry, only JPG, JPEG, PNG, GIF, MP4, MOV & AVI files are allowed.";
+        $uploadOk = 0;
     }
-}
+
+    if ($uploadOk == 0) {
+        echo "Sorry, your file was not uploaded.";
+    } else {
+        if (move_uploaded_file($_FILES["artwork"]["tmp_name"], $target_file)) {
+            $stmt = $conn->prepare("UPDATE artwork SET artwork_file = ? WHERE id = ?");
+            $stmt->bind_param("si", $target_file, $user_id);
+            if ($stmt->execute()) {
+                echo "Artwork uploaded.";
+            }
+            $stmt->close();
+        } else {
+            echo "Error uploading your file.";
+        }
+    }
 }
 
 // Close the database connection
 $conn->close();
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -262,7 +219,6 @@ $conn->close();
     <title>Artist Dashboard</title>
     <link rel="stylesheet" href="art.css">
     <link rel="stylesheet" href="artist.css">
-    <script type="text/javascript" src="artist.js"></script>
 </head>
 <body>
 <nav>
@@ -283,13 +239,12 @@ $conn->close();
         <a href="#" onclick="showSection('collaboration')">Collaboration</a>
         <a href="#" onclick="showSection('partnership')">Partnership</a>
         <a href="#" onclick="showSection('followers')">Followers</a>
+        <a href="#" onclick="showSection('events')">Events</a>
     </nav>
 
     <div class="content">
-        <!-- Profile Section -->
         <div class="content-section active" id="profile">
             <div class="profile-container">
-                <!-- Profile Picture -->
                 <div>
                     <?php if (!empty($profile_picture)): ?>
                         <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture" style="width: 150px; height: auto; margin-bottom: 20px;">
@@ -298,7 +253,6 @@ $conn->close();
                     <?php endif; ?>
                 </div>
                 
-                <!-- Profile Form -->
                 <form method="post" enctype="multipart/form-data" action="">
                     <label for="profile_picture">Upload New Profile Picture:</label>
                     <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
@@ -331,7 +285,6 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Collaboration Section -->
         <div class="content-section" id="collaboration">
             <h3>Collaborate with Me</h3>
             <form method="post" action="">
@@ -342,7 +295,6 @@ $conn->close();
             </form>
         </div>
 
-        <!-- Partnership Section -->
         <div class="content-section" id="partnership">
             <h3>Partnership Requests</h3>
             <form method="post" action="">
@@ -354,27 +306,58 @@ $conn->close();
             </form>
         </div>
 
-       <!-- Followers Section -->
-<div class="content-section" id="followers">
-    <h3>Your Followers</h3>
-    <div class="followers-list">
-        <!-- Display total number of followers -->
-        <p><strong>Total Followers:</strong> <?php echo $total_followers; ?></p>
-
-        <!-- Loop through followers and display each one -->
-        <?php while ($follower = $followers_result->fetch_assoc()) : ?>
-            <div class="follower-item">
-                <span><?php echo htmlspecialchars($follower['username']); ?></span>
-                <button onclick="startConversation(<?php echo $follower['id']; ?>)">Message</button>
+        <div class="content-section" id="followers">
+            <h3>Your Followers</h3>
+            <div class="followers-list">
+                <p><strong>Total Followers:</strong> <?php echo $total_followers; ?></p>
+                <?php if (empty($followers_array)): ?>
+                    <p>No followers found.</p>
+                <?php else: ?>
+                    <?php foreach ($followers_array as $follower): ?>
+                        <div class="follower-item">
+                            <span><?php echo htmlspecialchars($follower['username']); ?></span>
+                            <button onclick="startConversation(<?php echo $follower['id']; ?>, '<?php echo htmlspecialchars($follower['username']); ?>')">Message</button>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
-        <?php endwhile; ?>
+        </div>
+
+        <div class="content-section" id="messages">
+            <h3>Messages</h3>
+            <?php if (isset($messages) && !empty($messages)): ?>
+                <div class="message-thread">
+                    <?php foreach ($messages as $message): ?>
+                        <p>
+                            <strong><?php echo ($message['sender_id'] === $user_id) ? 'You' : 'Them'; ?>:</strong>
+                            <?php echo htmlspecialchars($message['message']); ?><br>
+                            <small>Sent at: <?php echo htmlspecialchars($message['created_at']); ?></small>
+                        </p>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p>No messages found. Select a follower to view messages.</p>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
+<script>
+function showSection(sectionId) {
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(section => section.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+}
 
-<script> 
-const yourSenderId = <?php echo json_encode($currentUserId); ?>;
-const yourSenderUsername = <?php echo json_encode($currentUsername); ?>;
+function startConversation(followerId, followerUsername) {
+    window.location.href = `artist.php?recipient_id=${followerId}`;
+}
+
+// Initialize the default section to display
+document.addEventListener('DOMContentLoaded', function() {
+    showSection('profile'); // Show profile section by default
+});
 </script>
+<script src="artist.js" defer></script>
 </body>
 </html>

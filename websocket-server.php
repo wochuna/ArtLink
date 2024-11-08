@@ -3,6 +3,10 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use Ratchet\Server\IoServer;
+use Ratchet\Http\HttpServer;
+use Ratchet\WebSocket\WsServer;
+use mysqli;
 
 class ChatServer implements MessageComponentInterface {
     protected $clients;
@@ -23,11 +27,13 @@ class ChatServer implements MessageComponentInterface {
         if ($this->conn->connect_error) {
             die("Connection failed: " . $this->conn->connect_error);
         }
-        echo "Connected successfully\n"; // Debugging line, can be removed in production
+        echo "Connected to the database successfully.\n"; // Debugging line, can be removed in production
     }
 
     public function onOpen(ConnectionInterface $conn) {
+        // Attach new client to the list of clients
         $this->clients->attach($conn);
+        echo "New connection! ({$conn->resourceId})\n";
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
@@ -75,5 +81,31 @@ class ChatServer implements MessageComponentInterface {
     
         $stmt->close();
     }
+
+    public function onClose(ConnectionInterface $conn) {
+        // Remove client from the list when they disconnect
+        $this->clients->detach($conn);
+        echo "Connection {$conn->resourceId} has disconnected\n";
+    }
+
+    public function onError(ConnectionInterface $conn, \Exception $e) {
+        // Log and handle errors
+        echo "An error occurred: {$e->getMessage()}\n";
+        $conn->close();
+    }
 }
-?>
+
+// Set up the WebSocket server
+$server = IoServer::factory(
+    new HttpServer(
+        new WsServer(
+            new ChatServer()
+        )
+    ),
+    8080
+);
+
+echo "WebSocket server running at ws://localhost:8080\n";
+
+// Run the WebSocket server
+$server->run();
