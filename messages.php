@@ -1,14 +1,12 @@
 <?php
 session_start();
 
-// Turn on error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-echo "Script started<br>";
+// Turn on error reporting for debugging (enable in development only)
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 
 // Check if user is logged in
 if (!isset($_SESSION['id'])) {
-    echo "User not logged in<br>";
     echo json_encode(['success' => false, 'message' => 'User not logged in']);
     exit();
 }
@@ -24,21 +22,22 @@ $conn = new mysqli($servername, $dbUsername, $dbPassword, $dbName);
 
 // Check if the database connection was successful
 if ($conn->connect_error) {
-    echo "Database connection failed: " . $conn->connect_error . "<br>";
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
     exit();
 }
 
 // Check if the request is a POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    echo "POST request received<br>";
+    // Get the logged-in user's ID
+    $sender_id = (int)$_SESSION['id']; // Ensure this is an integer
+    $recipient_id = isset($_POST['recipient_id']) ? (int)$_POST['recipient_id'] : null; // Get recipient ID from POST data
+    $message = isset($_POST['message']) ? trim($_POST['message']) : null; // Get message from POST data
 
-    // Temporarily set static values for testing
-    $sender_id = 13; // Replace with a valid user ID
-    $recipient_id = 19; // Replace with a valid recipient ID
-    $message = "Test message"; // Static test message
-
-    // Debugging output
-    echo "Sender ID: $sender_id, Recipient ID: $recipient_id, Message: $message<br>";
+    // Validate recipient ID and message
+    if ($recipient_id === null || empty($message)) {
+        echo json_encode(['success' => false, 'message' => 'Recipient ID and message are required']);
+        exit();
+    }
 
     // Get recipient username
     $recipient_stmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
@@ -56,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insert the message into the database
     $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, sender_username, recipient_username, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+    $sender_username = $_SESSION['username']; // Assuming the username is stored in the session
     $stmt->bind_param("iisss", $sender_id, $recipient_id, $sender_username, $recipient_username, $message);
 
     if ($stmt->execute()) {
@@ -66,11 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Close the statement
     $stmt->close();
-    // Close database connection
-    $conn->close();
-    exit();
+} else {
+    // If the request is not POST, respond with an error
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
 
-// If the request is not POST, respond with an error
-echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+// Close database connection
+$conn->close();
 ?>

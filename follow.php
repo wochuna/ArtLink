@@ -24,30 +24,46 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_tok
 }
 
 $artist_id = $_POST['artist_id'];
-$follower_id = $_SESSION['id']; // Logged in user's ID
+$follower_id = $_SESSION['id']; // Logged-in user's ID
 
 // Database connection
 $conn = new mysqli("localhost", "root", "", "artlink_entertainment");
 
 // Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
+    exit();
 }
 
 // Check for existing follow
 $checkFollowSql = "SELECT * FROM fans WHERE follower_id = ? AND followed_id = ?";
 $checkFollowStmt = $conn->prepare($checkFollowSql);
+if (!$checkFollowStmt) {
+    echo json_encode(['success' => false, 'message' => 'Failed to prepare statement: ' . $conn->error]);
+    $conn->close();
+    exit();
+}
+
 $checkFollowStmt->bind_param('ii', $follower_id, $artist_id);
 $checkFollowStmt->execute();
 $checkFollowResult = $checkFollowStmt->get_result();
 
 if ($checkFollowResult->num_rows > 0) {
     echo json_encode(['success' => false, 'message' => 'You are already following this artist.']);
+    $checkFollowStmt->close();
+    $conn->close();
     exit();
 }
+$checkFollowStmt->close();
 
 // Insert follow record
 $stmt = $conn->prepare("INSERT INTO fans (follower_id, followed_id, follow_date) VALUES (?, ?, NOW())");
+if (!$stmt) {
+    echo json_encode(['success' => false, 'message' => 'Failed to prepare insert statement: ' . $conn->error]);
+    $conn->close();
+    exit();
+}
+
 $stmt->bind_param("ii", $follower_id, $artist_id);
 if ($stmt->execute()) {
     echo json_encode(['success' => true, 'message' => 'Successfully followed the artist.']);
@@ -57,6 +73,5 @@ if ($stmt->execute()) {
 
 // Close statements and connection
 $stmt->close();
-$checkFollowStmt->close();
 $conn->close();
 ?>

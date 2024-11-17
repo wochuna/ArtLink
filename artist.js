@@ -13,7 +13,7 @@ socket.onmessage = function (event) {
             const newMessage = document.createElement("p");
             newMessage.innerHTML = `<strong>${data.sender === "audience" ? "Audience" : "You (Artist)"}:</strong> ${data.message}`;
             chatBox.appendChild(newMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
         }
     }
 };
@@ -68,7 +68,7 @@ const messageForm = document.getElementById("messageForm");
 if (messageForm) {
     messageForm.addEventListener("submit", function (e) {
         e.preventDefault();
-        const messageInput = document.getElementById("messageInput");
+        const messageInput = document.getElementById("message");
         const recipientId = document.getElementById("recipientId").value;
         const message = messageInput.value.trim();
 
@@ -85,15 +85,16 @@ if (messageForm) {
         };
         socket.send(JSON.stringify(messageData));
 
+        // Append the sent message to the chat box
         const chatBox = document.getElementById("chatBox");
         if (chatBox) {
             const newMessage = document.createElement("p");
             newMessage.innerHTML = `<strong>You (Artist):</strong> ${message}`;
             chatBox.appendChild(newMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
         }
 
-        messageInput.value = "";
+        messageInput.value = ""; // Clear input field
     });
 }
 
@@ -103,10 +104,16 @@ function startConversation(followerId, followerUsername) {
     if (recipientIdInput) {
         recipientIdInput.value = followerId;
         showSection('messages');
-        
+
         const chatHeader = document.getElementById("chatHeader");
         if (chatHeader) {
             chatHeader.innerHTML = `Chat with ${followerUsername}`;
+        }
+        
+        // Clear previous chat messages
+        const chatBox = document.getElementById("chatBox");
+        if (chatBox) {
+            chatBox.innerHTML = ""; // Clear previous chat messages if needed
         }
     }
 }
@@ -135,4 +142,4 @@ const followersData = [
     { id: 19, username: "believe" },
     { id: 20, username: "praise" }
 ];
-renderFollowers(followersData); // Replace with dynamic fetching
+renderFollowers(followersData); // Call to render followers; replace with dynamic data fetching as needed

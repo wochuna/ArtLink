@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $message = $_POST['message'];
 
     // Check if recipient exists
-    $recipient_check = $conn->prepare("SELECT id FROM users WHERE id = ?");
+    $recipient_check = $conn->prepare("SELECT id, username FROM users WHERE id = ?");
     $recipient_check->bind_param("i", $receiver_id);
     $recipient_check->execute();
     $recipient_check_result = $recipient_check->get_result();
@@ -56,9 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     if ($recipient_check_result->num_rows === 0) {
         echo "<p>Error: Invalid recipient user ID.</p>";
     } else {
+        $recipient_data = $recipient_check_result->fetch_assoc();
+        $recipient_name = $recipient_data['username']; // Get recipient name
+
         // Insert message
-        $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, message, created_at) VALUES (?, ?, ?, NOW())");
-        $stmt->bind_param("iis", $user_id, $receiver_id, $message);
+        $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, sender_username, recipient_username, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("iisss", $user_id, $receiver_id, $username, $recipient_name, $message);
         if ($stmt->execute()) {
             echo "<p>Message sent successfully!</p>";
         } else {
@@ -88,21 +91,21 @@ if ($followers_result->num_rows > 0) {
     while ($follower = $followers_result->fetch_assoc()) {
         $followers_array[] = $follower; // Populate the array
     }
-} 
+}
 $followers_query->close();
 
 // Display messages for a selected recipient
+$messages = []; // Initialize messages array
 if (isset($_GET['recipient_id'])) {
     $recipient_id = $_GET['recipient_id'];
 
-    // SQL query to fetch messages between the user and the recipient
-    $sql = "SELECT * FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
+    // SQL query to fetch messages including sender and recipient names
+    $sql = "SELECT sender_username, recipient_username, message, created_at FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
         $stmt->bind_param("iiii", $user_id, $recipient_id, $recipient_id, $user_id);
         if ($stmt->execute()) {
             $all_messages_result = $stmt->get_result();
-            $messages = [];
             if ($all_messages_result->num_rows > 0) {
                 while ($row = $all_messages_result->fetch_assoc()) {
                     $messages[] = $row; // Store messages for display
@@ -111,8 +114,6 @@ if (isset($_GET['recipient_id'])) {
         }
         $stmt->close();
     }
-} else {
-    $messages = []; // No messages to display
 }
 
 // Handle profile updates and file uploads...
@@ -240,6 +241,7 @@ $conn->close();
         <a href="#" onclick="showSection('partnership')">Partnership</a>
         <a href="#" onclick="showSection('followers')">Followers</a>
         <a href="#" onclick="showSection('events')">Events</a>
+        <a href="#" onclick="showSection('messages')">Messages</a>
     </nav>
 
     <div class="content">
@@ -287,12 +289,6 @@ $conn->close();
 
         <div class="content-section" id="collaboration">
             <h3>Collaborate with Me</h3>
-            <form method="post" action="">
-                <label for="message">Send a Message:</label>
-                <input type="hidden" name="recipient_id" value="<?php echo $user_id; ?>">
-                <textarea id="message" name="message" required></textarea>
-                <input type="submit" name="send_message" value="Send">
-            </form>
         </div>
 
         <div class="content-section" id="partnership">
@@ -323,22 +319,38 @@ $conn->close();
             </div>
         </div>
 
+        <div class="content-section" id="events">
+            <h3>Events</h3>
+        </div>
+
         <div class="content-section" id="messages">
-            <h3>Messages</h3>
-            <?php if (isset($messages) && !empty($messages)): ?>
-                <div class="message-thread">
-                    <?php foreach ($messages as $message): ?>
-                        <p>
-                            <strong><?php echo ($message['sender_id'] === $user_id) ? 'You' : 'Them'; ?>:</strong>
-                            <?php echo htmlspecialchars($message['message']); ?><br>
-                            <small>Sent at: <?php echo htmlspecialchars($message['created_at']); ?></small>
-                        </p>
-                    <?php endforeach; ?>
-                </div>
+    <h3>Messages</h3>
+    <div id="chatHeader">
+        <h4>Chat with <span id="recipientUsername"><?php echo isset($recipient_username) ? htmlspecialchars($recipient_username) : 'Unknown User'; ?></span></h4>
+    </div>
+    <div class="messages-container">
+        <div id="chat-box" class="message-thread">
+            <!-- Messages will be dynamically inserted here -->
+            <?php if (!empty($messages)): ?>
+                <?php foreach ($messages as $message): ?>
+                    <div class="message <?php echo $message['sender_username'] === $username ? 'sent' : 'received'; ?>">
+                        <strong><?php echo htmlspecialchars($message['sender_username']); ?>:</strong>
+                        <?php echo htmlspecialchars($message['message']); ?>
+                        <span class="timestamp"><?php echo date('Y-m-d H:i:s', strtotime($message['created_at'])); ?></span>
+                    </div>
+                <?php endforeach; ?>
             <?php else: ?>
-                <p>No messages found. Select a follower to view messages.</p>
+                <div class="message"><em>No messages yet.</em></div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <form method="post" action="" id="messageForm">
+        <input type="hidden" id="recipientId" name="recipient_id" value="<?php echo isset($recipient_id) ? htmlspecialchars($recipient_id) : ''; ?>">
+        <textarea id="message" name="message" placeholder="Type a message..." required></textarea>
+        <input type="submit" name="send_message" value="Send">
+    </form>
+</div>
     </div>
 </div>
 
