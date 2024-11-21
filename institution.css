@@ -2,35 +2,7 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
-}
-
-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #ff3d00;
-    padding: 10px 20px;
-    color: white;
-}
-
-nav .logo {
-    display: flex;
-    align-items: center;
-}
-
-nav ul {
-    list-style-type: none;
-}
-
-nav ul li {
-    display: inline-block;
-    margin-left: 20px;
-}
-
-nav ul li a {
-    color: white;
-    text-decoration: none;
+    background-color: linear-gradient(135deg, #ff9a00, #ff3d00);
 }
 
 .container {

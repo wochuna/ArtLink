@@ -1,4 +1,5 @@
 <?php
+// Start the session
 session_start();
 
 // Enable error reporting for debugging
@@ -6,36 +7,43 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Generate a CSRF token if it doesn't exist
+// Generate CSRF token if not already set
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Check if user is logged in
+// Check if the user is logged in
 if (!isset($_SESSION['id'])) {
     echo json_encode(['success' => false, 'message' => 'User not logged in']);
     exit();
 }
 
-// Validate CSRF token
+// Validate the CSRF token
 if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
     exit();
 }
 
-$artist_id = $_POST['artist_id'];
-$follower_id = $_SESSION['id']; // Logged-in user's ID
+// Get the follower ID from the session and artist ID from the POST request
+$follower_id = $_SESSION['id'];
+$artist_id = isset($_POST['artist_id']) ? (int)$_POST['artist_id'] : 0;
 
-// Database connection
+// Validate the artist ID
+if ($artist_id <= 0) {
+    echo json_encode(['success' => false, 'message' => 'Invalid artist ID']);
+    exit();
+}
+
+// Connect to the database
 $conn = new mysqli("localhost", "root", "", "artlink_entertainment");
 
-// Check connection
+// Check the database connection
 if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
     exit();
 }
 
-// Check for existing follow
+// Check if the user is already following the artist
 $checkFollowSql = "SELECT * FROM fans WHERE follower_id = ? AND followed_id = ?";
 $checkFollowStmt = $conn->prepare($checkFollowSql);
 if (!$checkFollowStmt) {
@@ -56,22 +64,23 @@ if ($checkFollowResult->num_rows > 0) {
 }
 $checkFollowStmt->close();
 
-// Insert follow record
-$stmt = $conn->prepare("INSERT INTO fans (follower_id, followed_id, follow_date) VALUES (?, ?, NOW())");
-if (!$stmt) {
+// Insert the follow action into the fans table
+$insertFollowSql = "INSERT INTO fans (follower_id, followed_id, follow_date) VALUES (?, ?, NOW())";
+$insertFollowStmt = $conn->prepare($insertFollowSql);
+if (!$insertFollowStmt) {
     echo json_encode(['success' => false, 'message' => 'Failed to prepare insert statement: ' . $conn->error]);
     $conn->close();
     exit();
 }
 
-$stmt->bind_param("ii", $follower_id, $artist_id);
-if ($stmt->execute()) {
+$insertFollowStmt->bind_param("ii", $follower_id, $artist_id);
+if ($insertFollowStmt->execute()) {
     echo json_encode(['success' => true, 'message' => 'Successfully followed the artist.']);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Error following artist: ' . $stmt->error]);
+    echo json_encode(['success' => false, 'message' => 'Error following artist: ' . $insertFollowStmt->error]);
 }
 
-// Close statements and connection
-$stmt->close();
+// Close the statement and connection
+$insertFollowStmt->close();
 $conn->close();
 ?>

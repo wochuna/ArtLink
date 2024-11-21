@@ -1,48 +1,48 @@
 <?php 
-// Start session to track logged-in user
+
 session_start();
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Generate a CSRF token if it doesn't exist
+
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Database connection details
+
 $servername = "localhost";
 $dbUsername = "root";
 $dbPassword = "";
 $dbName = "artlink_entertainment";
 
-// Create connection
+
 $conn = new mysqli($servername, $dbUsername, $dbPassword, $dbName);
 
-// Check connection
+
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Check if a user is logged in
+
 if (!isset($_SESSION['id'])) {
     echo json_encode(['success' => false, 'message' => 'User not logged in']);
     exit();
 }
 
-$id = $_SESSION['id']; // Logged in user's id
+$id = $_SESSION['id']; 
 
-// Fetch all artists from the artwork database
+
 $sql = "SELECT u.id, u.username, a.profile_picture FROM users u
         JOIN artwork a ON u.id = a.id";  
 $artistResult = $conn->query($sql);
 
 if (!$artistResult) {
-    die("Query failed: " . $conn->error); // Debugging line
+    die("Query failed: " . $conn->error); 
 }
 
-// Fetch followed artists for the logged-in user
+
 $followedArtistsSql = "SELECT followed_id FROM fans WHERE follower_id = ?";
 $followedArtistsStmt = $conn->prepare($followedArtistsSql);
 $followedArtistsStmt->bind_param('i', $id);
@@ -53,7 +53,7 @@ while ($row = $followedArtistsResult->fetch_assoc()) {
     $followedArtists[] = $row['followed_id'];
 }
 
-// Fetch messages for the selected artist (if applicable)
+
 $messages = [];
 if (isset($_POST['artist_id'])) {
     $artistId = $_POST['artist_id'];
@@ -74,12 +74,12 @@ if (isset($_POST['artist_id'])) {
     }
 }
 
-// Handle message sending
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     $message = $_POST['message'];
     $artistId = $_POST['artist_id'];
 
-    // Insert message into the database
+    
     $insertSql = "INSERT INTO messages (sender_id, recipient_id, message) VALUES (?, ?, ?)";
     $insertStmt = $conn->prepare($insertSql);
     $insertStmt->bind_param('iis', $id, $artistId, $message);
@@ -89,18 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     exit();
 }
 
-// Follow artist logic
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
-    $artistId = $_POST['artist_id']; // The ID of the artist to follow
-    $followerId = $id; // This is the logged-in user's ID
 
-    // Ensure both the follower and followed IDs are valid
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
+    $artistId = $_POST['artist_id']; 
+    $followerId = $id; 
+
     if ($followerId === $artistId) {
         echo json_encode(['success' => false, 'message' => 'You cannot follow yourself.']);
         exit();
     }
 
-    // Check if the artist exists
+    
     $checkArtistSql = "SELECT id FROM users WHERE id = ?";
     $checkArtistStmt = $conn->prepare($checkArtistSql);
     $checkArtistStmt->bind_param('i', $artistId);
@@ -112,13 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
         exit();
     }
 
-    // Insert follow relationship into fans table
+   
     $insertFollowSql = "INSERT INTO fans (follower_id, followed_id) VALUES (?, ?)";
     $insertFollowStmt = $conn->prepare($insertFollowSql);
-    $insertFollowStmt->bind_param('ii', $followerId, $artistId); // Correctly bind the follower and followed IDs
+    $insertFollowStmt->bind_param('ii', $followerId, $artistId);
 
     if ($insertFollowStmt->execute()) {
-        // Fetch the followed artist details to return
+      
         $artistDetailsSql = "SELECT id, username, profile_picture FROM users WHERE id = ?";
         $artistDetailsStmt = $conn->prepare($artistDetailsSql);
         $artistDetailsStmt->bind_param('i', $artistId);
@@ -133,9 +132,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['artist_id'])) {
     exit();
 }
 
-// Example of displaying each artist with a "Message" button
+$events = [];
+if (!empty($followedArtists)) {
+    $followedArtistsIds = implode(',', $followedArtists); 
+
+    // SQL query to fetch events for followed artists, including event_time and event_link
+    $eventsSql = "SELECT e.id, e.event_name, e.event_date, e.event_time, e.description, e.event_link 
+                  FROM events e
+                  WHERE e.artist_id IN ($followedArtistsIds)
+                  ORDER BY e.event_date DESC";
+    
+    // Execute the query
+    $eventsResult = $conn->query($eventsSql);
+
+    // Fetch the results into the $events array
+    if ($eventsResult) {
+        while ($row = $eventsResult->fetch_assoc()) {
+            $events[] = $row;
+        }
+    }
+}
+
+// Assuming $artistResult contains the list of artists the audience follows (retrieved earlier in the code)
 while ($artist = $artistResult->fetch_assoc()) {
-    $artistId = isset($artist['id']) ? $artist['id'] : 'null'; // Set artist ID with fallback
+    $artistId = isset($artist['id']) ? $artist['id'] : 'null'; 
     $username = htmlspecialchars($artist['username']);
     $profilePicture = htmlspecialchars($artist['profile_picture']);
 
@@ -147,11 +167,33 @@ while ($artist = $artistResult->fetch_assoc()) {
           </div>";
 }
 
-// Close database connection
+// Display upcoming events section
+echo "<h3>Upcoming Events from Artists You Follow</h3>";
+if (!empty($events)) {
+    echo "<ul>";
+    foreach ($events as $event) {
+        // Display event details
+        echo "<li>
+                <strong>" . htmlspecialchars($event['event_name']) . "</strong><br>
+                Date: " . htmlspecialchars($event['event_date']) . "<br>
+                Time: " . htmlspecialchars($event['event_time']) . "<br>
+                Description: " . htmlspecialchars($event['description']) . "<br>";
+        
+        // Display event link if it exists
+        if (!empty($event['event_link'])) {
+            echo "<a href='" . htmlspecialchars($event['event_link']) . "' target='_blank'>Event Link</a>";
+        }
+        
+        echo "</li>";
+    }
+    echo "</ul>";
+} else {
+    echo "<p>No events found.</p>";
+}
+
+
 $conn->close();
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -166,7 +208,7 @@ $conn->close();
         .section { display: none; }
         .active { display: block; }
 
-        /* Chat message styles */
+        
         #chat-box {
             border: 1px solid #ccc;
             padding: 10px;
@@ -183,13 +225,13 @@ $conn->close();
             clear: both;
         }
         .message.sent {
-            background-color: #dcf8c6; /* Light green for sent messages */
-            margin-left: auto; /* Align to the right */
+            background-color: #dcf8c6;
+            margin-left: auto; 
             text-align: right;
         }
         .message.received {
-            background-color: #f1f0f0; /* Light gray for received messages */
-            margin-right: auto; /* Align to the left */
+            background-color: #f1f0f0;
+            margin-right: auto; 
             text-align: left;
         }
     </style>
@@ -207,7 +249,7 @@ $conn->close();
     </ul>
 </nav>
 <div class="container">
-    <!-- Sidebar for navigation -->
+   
     <div class="sidebar">
         <a href="#" onclick="showSection('browse-artists')">Browse Artists</a>
         <a href="#" onclick="showSection('followed-artists')">Followed Artists</a>
@@ -215,9 +257,9 @@ $conn->close();
         <a href="#" onclick="showSection('messages')">Messages</a>
     </div>
 
-    <!-- Main content area -->
+  
     <div class="content">
-        <!-- Followed Artists Section -->
+       
         <div id="followed-artists" class="section">
             <h2>Followed Artists</h2>
             <div class="artist-list">
@@ -247,18 +289,37 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Events Section -->
-        <div id="events" class="section">
-            <h2>Upcoming Events</h2>
-            <p>This is the events section. Add upcoming events details here.</p>
-        </div>
+        
+        <div class="content-section" id="events">
+    <h3>Events</h3>
+    <div class="events-list">
+        <h4>Upcoming Events</h4>
+        <?php if (!empty($events)): ?>
+            <ul>
+                <?php foreach ($events as $event): ?>
+                    <li>
+                        <strong><?php echo htmlspecialchars($event['event_name']); ?></strong><br>
+                        Date: <?php echo htmlspecialchars($event['event_date']); ?><br>
+                        Time: <?php echo htmlspecialchars($event['event_time'] ?? 'Not specified'); ?><br>
+                        <?php if (!empty($event['event_link'])): ?>
+                            Link: <a href="<?php echo htmlspecialchars($event['event_link']); ?>" target="_blank">Join</a><br>
+                        <?php endif; ?>
+                        Description: <?php echo htmlspecialchars($event['description']); ?><br>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>No events found.</p>
+        <?php endif; ?>
+    </div>
+</div>
 
-       <!-- Messages Section -->
+
 <div id="messages" class="section">
     <h2>Your Messages</h2>
     <div id="chat-box">
         <?php
-        // Display fetched messages if they exist
+        
         if (!empty($messages)) {
             foreach ($messages as $message) {
                 $class = ($message['sender_id'] == $id) ? 'sent' : 'received';
@@ -282,12 +343,12 @@ $conn->close();
 </div>
 
 
-       <!-- Browse Artists Section (default view) -->
+      
 <div id="browse-artists" class="section active">
     <h2>Browse Artists</h2>
     <div class="artist-list">
         <?php
-        // Display artists in a grid format
+        
         if ($artistResult->num_rows > 0) {
             while ($artist = $artistResult->fetch_assoc()) {
                 ?>
@@ -296,7 +357,7 @@ $conn->close();
                     <h3><?php echo htmlspecialchars($artist['username']); ?></h3>
                     <form id="follow-form-<?php echo $artist['id']; ?>" method="POST">
                         <input type="hidden" name="artist_id" value="<?php echo $artist['id']; ?>">
-                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> 
                         <button type="button" onclick="followArtist(<?php echo $artist['id']; ?>)">Follow</button>
                     </form>
                     <button onclick="startChat(<?php echo $artist['id']; ?>)">Message</button>
@@ -315,11 +376,11 @@ $conn->close();
 </div>
 
 <script> 
-    // PHP Variables for the current user
+    
     const currentUserId = <?php echo isset($currentUserId) ? json_encode($currentUserId) : 'null'; ?>;
     const currentUsername = <?php echo isset($currentUsername) ? json_encode($currentUsername) : 'null'; ?>;
 
-    // WebSocket connection setup
+    
     const conn = new WebSocket('ws://localhost:8080'); 
 
     conn.onopen = function () {
@@ -334,7 +395,7 @@ $conn->close();
         console.log("WebSocket connection closed");
     };
 
-    // Handle incoming messages
+    
     conn.onmessage = function (event) {
         try {
             const data = JSON.parse(event.data);
@@ -345,14 +406,14 @@ $conn->close();
                 messageDiv.className = 'message ' + (data.sender_id === currentUserId ? 'sent' : 'received');
                 messageDiv.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
                 chatBox.appendChild(messageDiv);
-                chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
+                chatBox.scrollTop = chatBox.scrollHeight; 
             }
         } catch (e) {
             console.error("Error parsing message data:", e);
         }
     };
 
-    // Send a message
+    
     document.getElementById('message-form').addEventListener('submit', function (event) {
         event.preventDefault();
 
@@ -368,12 +429,12 @@ $conn->close();
                 message: message
             }));
 
-            // Clear the message input
+           
             messageInput.value = '';
         }
     });
 
-    // Function to show different sections
+    
     function showSection(sectionId) {
         document.querySelectorAll('.section').forEach(section => {
             section.classList.remove('active');
@@ -382,7 +443,7 @@ $conn->close();
         if (targetSection) targetSection.classList.add('active');
     }
 
-    // Function to follow an artist
+    
     function followArtist(artistId) {
         const csrfTokenElement = document.querySelector(`#follow-form-${artistId} input[name="csrf_token"]`);
         const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
@@ -398,7 +459,7 @@ $conn->close();
             });
     }
 
-    // Start a chat with a specific artist
+    
     function startChat(artistId) {
         const artistIdInput = document.getElementById('artist_id');
         if (artistIdInput) artistIdInput.value = artistId;
@@ -407,7 +468,7 @@ $conn->close();
         loadMessages(artistId);
     }
 
-    // Load messages with a specific artist
+    
     function loadMessages(artistId) {
         $.post('load_messages.php', { artist_id: artistId })
             .done(function (response) {
@@ -415,8 +476,7 @@ $conn->close();
                     const messages = JSON.parse(response);
                     const chatBox = document.getElementById('chat-box');
                     if (chatBox) {
-                        chatBox.innerHTML = ''; // Clear chat box
-
+                        chatBox.innerHTML = ''; 
                         messages.forEach(message => {
                             const messageDiv = document.createElement('div');
                             messageDiv.className = 'message ' + (message.sender_id === currentUserId ? 'sent' : 'received');
@@ -424,7 +484,7 @@ $conn->close();
                             chatBox.appendChild(messageDiv);
                         });
 
-                        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
+                        chatBox.scrollTop = chatBox.scrollHeight; 
                     }
                 } catch (e) {
                     console.error("Error parsing messages:", e);

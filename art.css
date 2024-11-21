@@ -4,8 +4,8 @@ nav {
     justify-content: space-between;
     background-color: gold;
     height: 90px;
-    width: 100%;
-    padding: 0 20px;
+    width: 90%;
+    padding: 10px;
 }
 
 img.logo {
@@ -45,4 +45,15 @@ nav ul li a {
 
 nav ul li a:hover {
     text-decoration: underline;
+}
+
+footer {
+    background: linear-gradient(to right, #ff9a00, #ff3d00);
+    text-align: center;
+    padding: 10px;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    color: white;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
 }

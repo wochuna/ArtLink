@@ -128,17 +128,17 @@ body {
 
 .message.sent {
     align-self: flex-end;
-    background-color: #dcf8c6; /* Light green for sent messages */
+    background-color: #dcf8c6;
     color: green;
 }
 
 .message.received {
     align-self: flex-start;
-    background-color: #ffffff; /* White for received messages */
+    background-color: #ffffff; 
     color: blue;
 }
 
-/* Responsive Styles */
+
 @media (max-width: 768px) {
     .container {
         flex-direction: column;

@@ -11,14 +11,14 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
-            color: #3e3e3e; /* Dark gray text color */
+            background: linear-gradient(135deg, #ff9a00, #ff3d00); 
+            color: #3e3e3e;
             display: flex;
             flex-direction: column;
-            height: 100vh; /* Full viewport height */
+            height: 100vh;
         }
         .content {
-            flex-grow: 1; /* Allow content area to grow */
+            flex-grow: 1; 
             display: flex;
             justify-content: center;
             align-items: center;
@@ -36,6 +36,31 @@
             line-height: 1.5;
             max-width: 600px;
             margin: auto;
+        }
+        .cta-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #ff3d00;
+            color: #3e3e3e;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .cta-button:hover {
+            background: #e63900;
+        }
+
+        footer {
+            background: linear-gradient(to right, #ff9a00, #ff3d00);
+            text-align: center;
+            padding: 10px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+            color: #3e3e3e;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
         }
     </style>
 </head>
@@ -62,7 +87,11 @@
                 Whether you are an artist, an audience member, or part of an artistic institution, 
                 ArtLink offers something for everyone. Start your journey today!
             </p>
+            <a href="signup.php" class="cta-button">Get Started</a>
         </div>
     </div>
+    <footer>
+        <p>&copy; 2024 ArtLink Entertainment. All rights reserved.</p>
+    </footer>
 </body>
 </html>

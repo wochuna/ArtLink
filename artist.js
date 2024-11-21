@@ -1,4 +1,3 @@
-// WebSocket connection setup
 let socket = new WebSocket("ws://localhost:8080");
 
 socket.onopen = function () {
@@ -13,7 +12,7 @@ socket.onmessage = function (event) {
             const newMessage = document.createElement("p");
             newMessage.innerHTML = `<strong>${data.sender === "audience" ? "Audience" : "You (Artist)"}:</strong> ${data.message}`;
             chatBox.appendChild(newMessage);
-            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     }
 };
@@ -27,7 +26,7 @@ socket.onclose = function () {
     console.log("WebSocket connection closed.");
 };
 
-// Sidebar navigation to display content on the right side
+
 function showSection(sectionId) {
     document.querySelectorAll(".content-section").forEach(section => section.classList.remove("active"));
     document.querySelectorAll(".sidebar a").forEach(link => link.classList.remove("active"));
@@ -40,11 +39,10 @@ function showSection(sectionId) {
         selectedLink.classList.add("active");
     }
 }
-window.showSection = showSection; // Make function globally accessible
+window.showSection = showSection; 
+showSection("profile"); 
 
-showSection("profile"); // Set default section to display
 
-// Profile picture preview
 const profilePictureInput = document.getElementById("profile_picture");
 const profilePicturePreview = document.querySelector(".profile-container img");
 
@@ -58,21 +56,23 @@ if (profilePictureInput) {
             };
             reader.readAsDataURL(file);
         } else {
-            profilePicturePreview.src = ""; // Reset if no file is selected
+            profilePicturePreview.src = ""; 
         }
     });
 }
 
-// Handle message sending
+
+// Handle message form submission
 const messageForm = document.getElementById("messageForm");
 if (messageForm) {
     messageForm.addEventListener("submit", function (e) {
         e.preventDefault();
+        
         const messageInput = document.getElementById("message");
         const recipientId = document.getElementById("recipientId").value;
         const message = messageInput.value.trim();
 
-        if (message === "") {
+        if (!message) {
             alert("Message cannot be empty!");
             return;
         }
@@ -83,47 +83,49 @@ if (messageForm) {
             recipient_id: recipientId,
             message: message
         };
+
+        // Send the message via WebSocket
         socket.send(JSON.stringify(messageData));
 
-        // Append the sent message to the chat box
+        // Update the chat box with the new message
         const chatBox = document.getElementById("chatBox");
         if (chatBox) {
-            const newMessage = document.createElement("p");
-            newMessage.innerHTML = `<strong>You (Artist):</strong> ${message}`;
+            const newMessage = document.createElement("div");
+            newMessage.classList.add("message", "sent");
+            newMessage.innerHTML = `
+                <strong>You (Artist):</strong> ${message}
+                <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+            `;
             chatBox.appendChild(newMessage);
-            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the latest message
         }
 
-        messageInput.value = ""; // Clear input field
+        messageInput.value = ""; // Clear the input field
     });
 }
 
-// Start conversation with a specific follower
+// Start a new conversation with a follower
 function startConversation(followerId, followerUsername) {
     const recipientIdInput = document.getElementById("recipientId");
-    if (recipientIdInput) {
-        recipientIdInput.value = followerId;
-        showSection('messages');
+    const chatHeader = document.getElementById("chatHeader");
+    const chatBox = document.getElementById("chatBox");
 
-        const chatHeader = document.getElementById("chatHeader");
-        if (chatHeader) {
-            chatHeader.innerHTML = `Chat with ${followerUsername}`;
-        }
-        
-        // Clear previous chat messages
-        const chatBox = document.getElementById("chatBox");
-        if (chatBox) {
-            chatBox.innerHTML = ""; // Clear previous chat messages if needed
-        }
+    if (recipientIdInput && chatHeader && chatBox) {
+        recipientIdInput.value = followerId;
+        showSection('messages'); // Function to display the messages section
+
+        chatHeader.innerHTML = `Chat with ${followerUsername}`;
+        chatBox.innerHTML = ""; // Clear the chat box for a new conversation
     }
 }
-window.startConversation = startConversation; // Make function globally accessible
+window.startConversation = startConversation; // Export the function globally
 
-// Render followers list
+// Render followers dynamically in the followers list
 function renderFollowers(followers) {
     const followersList = document.querySelector(".followers-list");
     if (!followersList) return;
-    followersList.innerHTML = "";
+
+    followersList.innerHTML = ""; // Clear existing followers
 
     followers.forEach(follower => {
         const followerItem = document.createElement("div");
@@ -135,11 +137,18 @@ function renderFollowers(followers) {
         followersList.appendChild(followerItem);
     });
 }
-window.renderFollowers = renderFollowers; // Make function globally accessible
+window.renderFollowers = renderFollowers; // Export the function globally
 
-// Example followers data (replace with dynamic data from backend)
+// Example data for testing
 const followersData = [
     { id: 19, username: "believe" },
     { id: 20, username: "praise" }
 ];
-renderFollowers(followersData); // Call to render followers; replace with dynamic data fetching as needed
+renderFollowers(followersData);
+
+// Add feedback to indicate WebSocket readiness
+if (typeof socket !== "undefined" && socket.readyState === WebSocket.OPEN) {
+    console.log("WebSocket connection is active.");
+} else {
+    console.error("WebSocket is not connected. Ensure the server is running.");
+}

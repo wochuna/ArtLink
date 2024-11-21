@@ -5,58 +5,59 @@
     <meta charset="utf-8">
     <title>Sign Up - ArtLink Entertainment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="art.css"> <!-- Link to your external CSS file -->
+    <link rel="stylesheet" href="art.css"> 
     <script type="text/javascript" src="signup.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
+            background: linear-gradient(135deg, #ff9a00, #ff3d00);
             height: 100vh;
             display: flex;
-            flex-direction: column; /* Allow stacking of nav and signup container */
+            flex-direction: column; 
         }
         .signup-container {
             max-width: 400px;
             padding: 40px;
-            background: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
             width: 100%;
-            margin: auto; /* Center the signup container */
-            flex-grow: 1; /* Allow signup container to grow */
+            margin: auto;
+            flex-grow: 1;
         }
+    
 
         h1 {
-            color: #3e3e3e; /* Dark gray for the title */
+            color: #3e3e3e;
             text-align: center;
             margin-bottom: 20px;
         }
-
+       
         label {
-            color: #3e3e3e; /* Dark gray for labels */
+            color: #3e3e3e;
             font-weight: bold;
         }
-
+        
         input[type="text"], input[type="email"], input[type="password"], select {
             width: 100%;
             padding: 12px 20px;
             margin: 10px 0;
-            border: 2px solid #ff3d00; /* Orange border */
+            border: 2px solid #ff3d00;
             border-radius: 10px;
             box-sizing: border-box;
             font-size: 16px;
             transition: border-color 0.3s;
         }
-
+       
         input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
-            border-color: #ff9a00; /* Lighter orange on focus */
+            border-color: #ff9a00; 
             outline: none;
         }
-
+        
         button {
-            background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
+            background: linear-gradient(45deg, #ff3d00, #ff9a00); 
             color: white;
             padding: 14px 20px;
             margin: 10px 0;
@@ -67,13 +68,14 @@
         }
 
         button:hover {
-            background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
+            background: linear-gradient(45deg, #ff9a00, #ff3d00);
         }
+    
     </style>
 </head>
 <body>
     <nav>
-        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> <!-- Replace with your logo image -->
+        <img src="spice-it-up/Capture.PNG" alt="ArtLink Logo" class="logo"> 
         <label class="logo">ArtLink Entertainment</label>
         <ul>
             <li><a href="index.php">HOME</a></li>

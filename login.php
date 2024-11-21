@@ -1,5 +1,5 @@
 <?php 
-session_start(); // Start session to access session variables
+session_start(); 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,21 +14,21 @@ session_start(); // Start session to access session variables
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #ff9a00, #ff3d00); /* Gradient background */
+            background: linear-gradient(135deg, #ff9a00, #ff3d00);
             height: 100vh;
             display: flex;
-            flex-direction: column; /* Allow stacking of nav and login container */
+            flex-direction: column; 
         }
         
         .login-container {
             max-width: 400px;
             padding: 40px;
-            background: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+            background: rgba(255, 255, 255, 0.95); 
             border-radius: 20px;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
             margin: auto;
-            flex-grow: 1; /* Allow login container to grow */
+            flex-grow: 1; 
         }
 
         h1 {
@@ -46,7 +46,7 @@ session_start(); // Start session to access session variables
             width: 100%;
             padding: 12px 20px;
             margin: 10px 0;
-            border: 2px solid #ff3d00; /* Orange border */
+            border: 2px solid #ff3d00;
             border-radius: 10px;
             box-sizing: border-box;
             font-size: 16px;
@@ -54,12 +54,12 @@ session_start(); // Start session to access session variables
         }
 
         input[type="text"]:focus, input[type="password"]:focus {
-            border-color: #ff9a00; /* Lighter orange on focus */
+            border-color: #ff9a00; 
             outline: none;
         }
 
         button {
-            background: linear-gradient(45deg, #ff3d00, #ff9a00); /* Gradient button */
+            background: linear-gradient(45deg, #ff3d00, #ff9a00); 
             color: white;
             padding: 14px 20px;
             margin: 10px 0;
@@ -70,14 +70,9 @@ session_start(); // Start session to access session variables
         }
 
         button:hover {
-            background: linear-gradient(45deg, #ff9a00, #ff3d00); /* Reverse gradient on hover */
+            background: linear-gradient(45deg, #ff9a00, #ff3d00); 
         }
-
-        .forgot-password-link {
-            text-align: center;
-            margin-top: 10px;
-        }
-
+        
         .signup-link {
             text-align: center;
             margin-top: 10px;
@@ -105,12 +100,12 @@ session_start(); // Start session to access session variables
     <div class="login-container">
         <h1>Login to Your Account</h1>
         
-        <!-- Display error message if there is any -->
+       
         <?php if(isset($_SESSION['error'])): ?>
             <div class="error-message">
                 <?php 
                 echo $_SESSION['error'];
-                unset($_SESSION['error']); // Clear error after displaying
+                unset($_SESSION['error']); 
                 ?>
             </div>
         <?php endif; ?>
@@ -124,9 +119,6 @@ session_start(); // Start session to access session variables
 
             <button type="submit">Login</button>
         </form>
-        <div class="forgot-password-link">
-            <a href="forgot-password.php" style="color: #ff3d00; font-weight: bold;">Forgot your password?Reset here</a>
-        </div>
         <div class="signup-link">
              <a href="signup.php" style="color: #ff3d00; font-weight: bold;">Don't have an account? Sign Up</a>
         </div>

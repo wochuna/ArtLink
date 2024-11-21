@@ -20,7 +20,7 @@ if ($conn->connect_error) {
 
 $user_id = $_SESSION['id'];
 
-// Fetch the artist profile details
+
 $sql = "SELECT * FROM artwork WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
@@ -42,12 +42,12 @@ if ($result->num_rows == 1) {
     exit();
 }
 
-// Handle sending messages
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $receiver_id = $_POST['recipient_id'];
     $message = $_POST['message'];
 
-    // Check if recipient exists
+  
     $recipient_check = $conn->prepare("SELECT id, username FROM users WHERE id = ?");
     $recipient_check->bind_param("i", $receiver_id);
     $recipient_check->execute();
@@ -57,9 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
         echo "<p>Error: Invalid recipient user ID.</p>";
     } else {
         $recipient_data = $recipient_check_result->fetch_assoc();
-        $recipient_name = $recipient_data['username']; // Get recipient name
+        $recipient_name = $recipient_data['username']; 
 
-        // Insert message
+      
         $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, sender_username, recipient_username, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("iisss", $user_id, $receiver_id, $username, $recipient_name, $message);
         if ($stmt->execute()) {
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $recipient_check->close();
 }
 
-// Display follower count
+
 $follower_count_query = $conn->prepare("SELECT COUNT(*) AS total_followers FROM fans WHERE followed_id = ?");
 $follower_count_query->bind_param("i", $user_id);
 $follower_count_query->execute();
@@ -80,7 +80,7 @@ $follower_count_result = $follower_count_query->get_result();
 $total_followers = $follower_count_result->fetch_assoc()['total_followers'] ?? 0;
 $follower_count_query->close();
 
-// Prepare followers data for JavaScript
+
 $followers_array = [];
 $followers_query = $conn->prepare("SELECT users.id, users.username FROM users JOIN fans ON users.id = fans.follower_id WHERE fans.followed_id = ?");
 $followers_query->bind_param("i", $user_id);
@@ -89,17 +89,17 @@ $followers_result = $followers_query->get_result();
 
 if ($followers_result->num_rows > 0) {
     while ($follower = $followers_result->fetch_assoc()) {
-        $followers_array[] = $follower; // Populate the array
+        $followers_array[] = $follower; 
     }
 }
 $followers_query->close();
 
-// Display messages for a selected recipient
-$messages = []; // Initialize messages array
+
+$messages = []; 
 if (isset($_GET['recipient_id'])) {
     $recipient_id = $_GET['recipient_id'];
 
-    // SQL query to fetch messages including sender and recipient names
+   
     $sql = "SELECT sender_username, recipient_username, message, created_at FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -108,7 +108,7 @@ if (isset($_GET['recipient_id'])) {
             $all_messages_result = $stmt->get_result();
             if ($all_messages_result->num_rows > 0) {
                 while ($row = $all_messages_result->fetch_assoc()) {
-                    $messages[] = $row; // Store messages for display
+                    $messages[] = $row; 
                 }
             }
         }
@@ -116,7 +116,7 @@ if (isset($_GET['recipient_id'])) {
     }
 }
 
-// Handle profile updates and file uploads...
+
 if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == UPLOAD_ERR_OK) {
     $target_dir = "uploads/";
     if (!is_dir($target_dir)) {
@@ -162,7 +162,7 @@ if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == 
     }
 }
 
-// Handle artwork upload
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['artwork'])) {
     $target_dir = "artworks/";
     if (!is_dir($target_dir)) {
@@ -207,8 +207,104 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['artwork'])) {
         }
     }
 }
+// Fetch Events
+$events_query = $conn->prepare("SELECT * FROM events WHERE artist_id = ? ORDER BY created_at DESC");
+$events_query->bind_param("i", $user_id);
+$events_query->execute();
+$events_result = $events_query->get_result();
 
-// Close the database connection
+if ($events_result->num_rows > 0) {
+    while ($event = $events_result->fetch_assoc()) {
+        $events[] = $event;
+    }
+}
+$events_query->close();
+
+// Add Event
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_event'])) {
+    $event_name = $_POST['event_name'] ?? '';
+    $event_date = $_POST['event_date'] ?? '';
+    $event_time = $_POST['event_time'] ?? null;
+    $event_link = $_POST['event_link'] ?? null;
+    $description = $_POST['description'] ?? '';
+
+    if (empty($event_name) || empty($event_date) || empty($description)) {
+        $error_message = "Please fill in all required fields.";
+    } else {
+        $stmt = $conn->prepare("INSERT INTO events (event_name, event_date, event_time, event_link, description, artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssssi", $event_name, $event_date, $event_time, $event_link, $description, $user_id);
+
+        if ($stmt->execute()) {
+            $success_message = "Event added successfully!";
+            header("Location: events.php"); // Reload to prevent form resubmission
+            exit();
+        } else {
+            $error_message = "Error adding event: " . $stmt->error;
+        }
+        $stmt->close();
+    }
+}
+
+// Delete Event
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_event'])) {
+    $event_id = $_POST['event_id'];
+
+    $stmt = $conn->prepare("DELETE FROM events WHERE id = ? AND artist_id = ?");
+    $stmt->bind_param("ii", $event_id, $user_id);
+
+    if ($stmt->execute()) {
+        $success_message = "Event deleted successfully!";
+        header("Location: events.php");
+        exit();
+    } else {
+        $error_message = "Error deleting event: " . $stmt->error;
+    }
+
+}
+
+if (isset($_POST['submit_partnership'])) {
+    // Retrieve form data
+    $institutionName = $_POST['partner_name'];  // Name of the institution (entered by artist)
+    $startDate = $_POST['start_date'];  
+    $endDate = $_POST['end_date'];  // Partnership start date
+    $description = $_POST['description'];  // Description of the partnership
+    $contactInfo = $_POST['contact_info'];  // Optional contact info for the institution
+
+    // Validate input
+    if (!empty($institutionName) && !empty($startDate) && !empty($endDate) && !empty($description)) {
+        // Get the institution's ID based on the institution's username (partner_name) and role 'institution'
+        $institutionSql = "SELECT id, email FROM users WHERE username = ? AND role = 'institution'";
+        $stmt = $conn->prepare($institutionSql);
+        $stmt->bind_param('s', $institutionName);  // Bind institution name (username)
+        $stmt->execute();
+        $institutionResult = $stmt->get_result();
+
+        if ($institutionResult && $institution = $institutionResult->fetch_assoc()) {
+            $institutionId = $institution['id'];  // Get the institution ID
+            $institutionEmail = $institution['email'];  // Get the institution's email
+
+            // Assuming $artistId is already set as the logged-in artist's ID
+            $artistId = $_SESSION['id'];  // Get the logged-in artist's ID
+
+            // Insert the partnership request into the database
+            $insertSql = "INSERT INTO partnerships (artist_id, institution_id, start_date, end_date, description, partner_name, institution_email, contact_info)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($insertSql);
+            $stmt->bind_param('iissssss', $artistId, $institutionId, $startDate, $endDate, $description, $institutionName, $institutionEmail, $contactInfo);
+
+            if ($stmt->execute()) {
+                echo "<p>Your partnership request has been submitted successfully!</p>";
+            } else {
+                echo "<p>Error: " . $conn->error . "</p>";
+            }
+        } else {
+            echo "<p>Institution not found. Please make sure the institution name is correct and that it has a valid role of 'institution'.</p>";
+        }
+    } else {
+        echo "<p>Please fill in all required fields.</p>";
+    }
+}
+
 $conn->close();
 ?>
 
@@ -292,45 +388,116 @@ $conn->close();
         </div>
 
         <div class="content-section" id="partnership">
-            <h3>Partnership Requests</h3>
-            <form method="post" action="">
-                <label for="partner_name">Partner Name:</label>
-                <input type="text" id="partner_name" name="partner_name" required>
-                <label for="description">Description:</label>
-                <textarea id="description" name="description" required></textarea>
-                <input type="submit" name="submit_partnership" value="Submit Partnership">
-            </form>
-        </div>
+    <h3>Submit Partnership Request</h3>
+    <form method="post" action="">
+        <!-- Partner Name (Institution entered by the artist) -->
+        <label for="partner_name">Partner Name (Institution):</label>
+        <input type="text" id="partner_name" name="partner_name" required>
 
-        <div class="content-section" id="followers">
-            <h3>Your Followers</h3>
-            <div class="followers-list">
-                <p><strong>Total Followers:</strong> <?php echo $total_followers; ?></p>
-                <?php if (empty($followers_array)): ?>
-                    <p>No followers found.</p>
-                <?php else: ?>
-                    <?php foreach ($followers_array as $follower): ?>
-                        <div class="follower-item">
-                            <span><?php echo htmlspecialchars($follower['username']); ?></span>
-                            <button onclick="startConversation(<?php echo $follower['id']; ?>, '<?php echo htmlspecialchars($follower['username']); ?>')">Message</button>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
+        <!-- Partnership Start Date -->
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" required>
 
-        <div class="content-section" id="events">
-            <h3>Events</h3>
-        </div>
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" required>
 
-        <div class="content-section" id="messages">
+        <!-- Partnership Description -->
+        <label for="description">Partnership Description:</label>
+        <textarea id="description" name="description" required></textarea>
+
+        <!-- Optional field for the institution's contact information or other details -->
+        <label for="contact_info">Institution Contact Info:</label>
+        <input type="text" id="contact_info" name="contact_info">
+
+        <input type="submit" name="submit_partnership" value="Submit Partnership">
+    </form>
+</div>
+
+<div class="content-section" id="followers">
+    <h3>Your Followers</h3>
+    <div class="followers-list">
+        <p><strong>Total Followers:</strong> <?php echo $total_followers; ?></p>
+        <?php if (empty($followers_array)): ?>
+            <p>No followers found.</p>
+        <?php else: ?>
+            <?php foreach ($followers_array as $follower): ?>
+                <div class="follower-item">
+                    <span><?php echo htmlspecialchars($follower['username']); ?></span>
+                    <button onclick="startConversation(<?php echo $follower['id']; ?>, '<?php echo htmlspecialchars($follower['username']); ?>')">
+                        Message
+                    </button>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+
+<div class="content-section" id="events">
+    <h3>Events</h3>
+   
+    <!-- Event Form -->
+    <form method="post" action="" enctype="multipart/form-data" class="event-form">
+        <label for="event_name">Event Name:</label>
+        <input type="text" id="event_name" name="event_name" required>
+
+        <label for="event_date">Event Date:</label>
+        <input type="date" id="event_date" name="event_date" required>
+
+        <label for="event_time">Event Time:</label>
+        <input type="time" id="event_time" name="event_time">
+
+        <label for="event_link">Event Link:</label>
+        <input type="url" id="event_link" name="event_link" placeholder="Enter online event link">
+
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" required></textarea>
+
+        <button type="submit" name="add_event" class="btn-submit">Add Event</button>
+    </form>
+
+    <!-- Events List -->
+    <div class="events-list">
+        <h4>Your Events</h4>
+        <?php if (!empty($events)): ?>
+            <ul>
+                <?php foreach ($events as $event): ?>
+                    <li>
+                        <strong><?php echo htmlspecialchars($event['event_name']); ?></strong><br>
+                        Date: <?php echo htmlspecialchars($event['event_date']); ?><br>
+                        Time: <?php echo htmlspecialchars($event['event_time'] ?? 'Not specified'); ?><br>
+                        <?php if (!empty($event['event_link'])): ?>
+                            Link: <a href="<?php echo htmlspecialchars($event['event_link']); ?>" target="_blank">Join</a><br>
+                        <?php endif; ?>
+                        Description: <?php echo htmlspecialchars($event['description']); ?><br>
+                        
+                        <!-- Delete Event -->
+                        <form method="post" action="" style="display: inline;">
+                            <input type="hidden" name="event_id" value="<?php echo $event['id']; ?>">
+                            <button type="submit" name="delete_event" class="btn-delete">Delete</button>
+                        </form>
+
+                        <!-- Edit Event -->
+                        <form method="post" action="" style="display: inline;">
+                            <input type="hidden" name="event_id" value="<?php echo $event['id']; ?>">
+                            <button type="submit" name="edit_event" class="btn-edit">Edit</button>
+                        </form>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>No events found.</p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="content-section" id="messages">
     <h3>Messages</h3>
     <div id="chatHeader">
         <h4>Chat with <span id="recipientUsername"><?php echo isset($recipient_username) ? htmlspecialchars($recipient_username) : 'Unknown User'; ?></span></h4>
     </div>
     <div class="messages-container">
         <div id="chat-box" class="message-thread">
-            <!-- Messages will be dynamically inserted here -->
             <?php if (!empty($messages)): ?>
                 <?php foreach ($messages as $message): ?>
                     <div class="message <?php echo $message['sender_username'] === $username ? 'sent' : 'received'; ?>">
@@ -345,14 +512,13 @@ $conn->close();
         </div>
     </div>
 
-    <form method="post" action="" id="messageForm">
+    <form method="post" action="send_message.php" id="messageForm">
         <input type="hidden" id="recipientId" name="recipient_id" value="<?php echo isset($recipient_id) ? htmlspecialchars($recipient_id) : ''; ?>">
         <textarea id="message" name="message" placeholder="Type a message..." required></textarea>
         <input type="submit" name="send_message" value="Send">
     </form>
 </div>
-    </div>
-</div>
+
 
 <script>
 function showSection(sectionId) {
@@ -365,9 +531,9 @@ function startConversation(followerId, followerUsername) {
     window.location.href = `artist.php?recipient_id=${followerId}`;
 }
 
-// Initialize the default section to display
+
 document.addEventListener('DOMContentLoaded', function() {
-    showSection('profile'); // Show profile section by default
+    showSection('profile'); 
 });
 </script>
 <script src="artist.js" defer></script>
