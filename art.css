@@ -4,8 +4,9 @@ nav {
     justify-content: space-between;
     background-color: gold;
     height: 90px;
-    width: 90%;
+    width: 100%;
     padding: 10px;
+    
 }
 
 img.logo {

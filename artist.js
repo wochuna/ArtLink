@@ -139,11 +139,7 @@ function renderFollowers(followers) {
 }
 window.renderFollowers = renderFollowers; // Export the function globally
 
-// Example data for testing
-const followersData = [
-    { id: 19, username: "believe" },
-    { id: 20, username: "praise" }
-];
+
 renderFollowers(followersData);
 
 // Add feedback to indicate WebSocket readiness

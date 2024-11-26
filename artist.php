@@ -3,11 +3,13 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 session_start();
 
+// Check if the user is logged in
 if (!isset($_SESSION['id'])) {
     echo "User not logged in. Please log in to edit your profile.";
     exit();
 }
 
+// Database connection
 $servername = "localhost";
 $dbUsername = "root";
 $dbPassword = "";
@@ -20,7 +22,7 @@ if ($conn->connect_error) {
 
 $user_id = $_SESSION['id'];
 
-
+// Fetch artist profile
 $sql = "SELECT * FROM artwork WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
@@ -42,12 +44,11 @@ if ($result->num_rows == 1) {
     exit();
 }
 
-
+// Handle sending a message
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $receiver_id = $_POST['recipient_id'];
     $message = $_POST['message'];
 
-  
     $recipient_check = $conn->prepare("SELECT id, username FROM users WHERE id = ?");
     $recipient_check->bind_param("i", $receiver_id);
     $recipient_check->execute();
@@ -57,9 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
         echo "<p>Error: Invalid recipient user ID.</p>";
     } else {
         $recipient_data = $recipient_check_result->fetch_assoc();
-        $recipient_name = $recipient_data['username']; 
+        $recipient_name = $recipient_data['username'];
 
-      
         $stmt = $conn->prepare("INSERT INTO messages (sender_id, recipient_id, sender_username, recipient_username, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("iisss", $user_id, $receiver_id, $username, $recipient_name, $message);
         if ($stmt->execute()) {
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_message'])) {
     $recipient_check->close();
 }
 
-
+// Fetch follower count
 $follower_count_query = $conn->prepare("SELECT COUNT(*) AS total_followers FROM fans WHERE followed_id = ?");
 $follower_count_query->bind_param("i", $user_id);
 $follower_count_query->execute();
@@ -80,7 +80,7 @@ $follower_count_result = $follower_count_query->get_result();
 $total_followers = $follower_count_result->fetch_assoc()['total_followers'] ?? 0;
 $follower_count_query->close();
 
-
+// Fetch followers
 $followers_array = [];
 $followers_query = $conn->prepare("SELECT users.id, users.username FROM users JOIN fans ON users.id = fans.follower_id WHERE fans.followed_id = ?");
 $followers_query->bind_param("i", $user_id);
@@ -89,17 +89,15 @@ $followers_result = $followers_query->get_result();
 
 if ($followers_result->num_rows > 0) {
     while ($follower = $followers_result->fetch_assoc()) {
-        $followers_array[] = $follower; 
+        $followers_array[] = $follower;
     }
 }
 $followers_query->close();
 
-
-$messages = []; 
+// Fetch messages with a recipient
+$messages = [];
 if (isset($_GET['recipient_id'])) {
     $recipient_id = $_GET['recipient_id'];
-
-   
     $sql = "SELECT sender_username, recipient_username, message, created_at FROM messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY created_at ASC";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -108,7 +106,7 @@ if (isset($_GET['recipient_id'])) {
             $all_messages_result = $stmt->get_result();
             if ($all_messages_result->num_rows > 0) {
                 while ($row = $all_messages_result->fetch_assoc()) {
-                    $messages[] = $row; 
+                    $messages[] = $row;
                 }
             }
         }
@@ -116,7 +114,7 @@ if (isset($_GET['recipient_id'])) {
     }
 }
 
-
+// Handle profile picture upload
 if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == UPLOAD_ERR_OK) {
     $target_dir = "uploads/";
     if (!is_dir($target_dir)) {
@@ -126,93 +124,53 @@ if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == 
     $original_file_name = basename($_FILES["profile_picture"]["name"]);
     $imageFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
     $target_file = $target_dir . uniqid() . '.' . $imageFileType;
-    $uploadOk = 1;
-
-    if (file_exists($_FILES["profile_picture"]["tmp_name"])) {
-        $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
-        if ($check === false) {
-            echo "File is not an image.";
-            $uploadOk = 0;
-        }
-    }
 
     if ($_FILES["profile_picture"]["size"] > 500000) {
         echo "Sorry, your file is too large.";
-        $uploadOk = 0;
-    }
-
-    if (!in_array($imageFileType, ['jpg', 'jpeg', 'png', 'gif'])) {
+    } elseif (!in_array($imageFileType, ['jpg', 'jpeg', 'png', 'gif'])) {
         echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
-        $uploadOk = 0;
-    }
-
-    if ($uploadOk == 0) {
-        echo "Sorry, your file was not uploaded.";
-    } else {
-        if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
-            $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
-            $stmt->bind_param("si", $target_file, $user_id);
-            if ($stmt->execute()) {
-                echo "Profile picture updated.";
-            }
-            $stmt->close();
-        } else {
-            echo "Error uploading your file.";
+    } elseif (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
+        $stmt = $conn->prepare("UPDATE artwork SET profile_picture = ? WHERE id = ?");
+        $stmt->bind_param("si", $target_file, $user_id);
+        if ($stmt->execute()) {
+            echo "Profile picture updated.";
         }
+        $stmt->close();
+    } else {
+        echo "Error uploading your file.";
     }
 }
 
+// Handle partnership submission
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_partnership'])) {
+    $institution_id = $_POST['institution_id'];
+    $partner_name = $_POST['partner_name'];
+    $start_date = $_POST['start_date'];
+    $end_date = $_POST['end_date'];
+    $description = $_POST['description'];
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['artwork'])) {
-    $target_dir = "artworks/";
-    if (!is_dir($target_dir)) {
-        mkdir($target_dir, 0755, true);
-    }
-
-    $original_file_name = basename($_FILES["artwork"]["name"]);
-    $artworkFileType = strtolower(pathinfo($original_file_name, PATHINFO_EXTENSION));
-    $target_file = $target_dir . uniqid() . '.' . $artworkFileType;
-    $uploadOk = 1;
-
-    if (file_exists($_FILES["artwork"]["tmp_name"])) {
-        $check = getimagesize($_FILES["artwork"]["tmp_name"]);
-        if ($check === false && !in_array($artworkFileType, ['mp4', 'mov', 'avi'])) {
-            echo "File is not a valid image or video.";
-            $uploadOk = 0;
-        }
-    }
-
-    if ($_FILES["artwork"]["size"] > 5000000) {
-        echo "Sorry, your file is too large.";
-        $uploadOk = 0;
-    }
-
-    if (!in_array($artworkFileType, ['jpg', 'png', 'jpeg', 'gif', 'mp4', 'mov', 'avi'])) {
-        echo "Sorry, only JPG, JPEG, PNG, GIF, MP4, MOV & AVI files are allowed.";
-        $uploadOk = 0;
-    }
-
-    if ($uploadOk == 0) {
-        echo "Sorry, your file was not uploaded.";
+    if (empty($partner_name) || empty($start_date) || empty($description)) {
+        echo "Please fill in all required fields.";
     } else {
-        if (move_uploaded_file($_FILES["artwork"]["tmp_name"], $target_file)) {
-            $stmt = $conn->prepare("UPDATE artwork SET artwork_file = ? WHERE id = ?");
-            $stmt->bind_param("si", $target_file, $user_id);
-            if ($stmt->execute()) {
-                echo "Artwork uploaded.";
-            }
-            $stmt->close();
+        $stmt = $conn->prepare("INSERT INTO partnerships (artist_id, institution_id, partner_name, start_date, end_date, description) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iissss", $user_id, $institution_id, $partner_name, $start_date, $end_date, $description);
+
+        if ($stmt->execute()) {
+            echo "Partnership added successfully!";
         } else {
-            echo "Error uploading your file.";
+            echo "Error adding partnership: " . $stmt->error;
         }
+        $stmt->close();
     }
 }
-// Fetch Events
+
+// Fetch events
 $events_query = $conn->prepare("SELECT * FROM events WHERE artist_id = ? ORDER BY created_at DESC");
 $events_query->bind_param("i", $user_id);
 $events_query->execute();
 $events_result = $events_query->get_result();
 
+$events = [];
 if ($events_result->num_rows > 0) {
     while ($event = $events_result->fetch_assoc()) {
         $events[] = $event;
@@ -220,7 +178,7 @@ if ($events_result->num_rows > 0) {
 }
 $events_query->close();
 
-// Add Event
+// Add event
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_event'])) {
     $event_name = $_POST['event_name'] ?? '';
     $event_date = $_POST['event_date'] ?? '';
@@ -229,84 +187,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_event'])) {
     $description = $_POST['description'] ?? '';
 
     if (empty($event_name) || empty($event_date) || empty($description)) {
-        $error_message = "Please fill in all required fields.";
+        echo "Please fill in all required fields.";
     } else {
         $stmt = $conn->prepare("INSERT INTO events (event_name, event_date, event_time, event_link, description, artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("sssssi", $event_name, $event_date, $event_time, $event_link, $description, $user_id);
 
         if ($stmt->execute()) {
-            $success_message = "Event added successfully!";
-            header("Location: events.php"); // Reload to prevent form resubmission
-            exit();
+            echo "Event added successfully!";
         } else {
-            $error_message = "Error adding event: " . $stmt->error;
+            echo "Error adding event: " . $stmt->error;
         }
         $stmt->close();
     }
 }
 
-// Delete Event
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_event'])) {
-    $event_id = $_POST['event_id'];
-
-    $stmt = $conn->prepare("DELETE FROM events WHERE id = ? AND artist_id = ?");
-    $stmt->bind_param("ii", $event_id, $user_id);
-
-    if ($stmt->execute()) {
-        $success_message = "Event deleted successfully!";
-        header("Location: events.php");
-        exit();
-    } else {
-        $error_message = "Error deleting event: " . $stmt->error;
-    }
-
-}
-
-if (isset($_POST['submit_partnership'])) {
-    // Retrieve form data
-    $institutionName = $_POST['partner_name'];  // Name of the institution (entered by artist)
-    $startDate = $_POST['start_date'];  
-    $endDate = $_POST['end_date'];  // Partnership start date
-    $description = $_POST['description'];  // Description of the partnership
-    $contactInfo = $_POST['contact_info'];  // Optional contact info for the institution
-
-    // Validate input
-    if (!empty($institutionName) && !empty($startDate) && !empty($endDate) && !empty($description)) {
-        // Get the institution's ID based on the institution's username (partner_name) and role 'institution'
-        $institutionSql = "SELECT id, email FROM users WHERE username = ? AND role = 'institution'";
-        $stmt = $conn->prepare($institutionSql);
-        $stmt->bind_param('s', $institutionName);  // Bind institution name (username)
-        $stmt->execute();
-        $institutionResult = $stmt->get_result();
-
-        if ($institutionResult && $institution = $institutionResult->fetch_assoc()) {
-            $institutionId = $institution['id'];  // Get the institution ID
-            $institutionEmail = $institution['email'];  // Get the institution's email
-
-            // Assuming $artistId is already set as the logged-in artist's ID
-            $artistId = $_SESSION['id'];  // Get the logged-in artist's ID
-
-            // Insert the partnership request into the database
-            $insertSql = "INSERT INTO partnerships (artist_id, institution_id, start_date, end_date, description, partner_name, institution_email, contact_info)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($insertSql);
-            $stmt->bind_param('iissssss', $artistId, $institutionId, $startDate, $endDate, $description, $institutionName, $institutionEmail, $contactInfo);
-
-            if ($stmt->execute()) {
-                echo "<p>Your partnership request has been submitted successfully!</p>";
-            } else {
-                echo "<p>Error: " . $conn->error . "</p>";
-            }
-        } else {
-            echo "<p>Institution not found. Please make sure the institution name is correct and that it has a valid role of 'institution'.</p>";
-        }
-    } else {
-        echo "<p>Please fill in all required fields.</p>";
-    }
-}
-
 $conn->close();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -390,22 +287,22 @@ $conn->close();
         <div class="content-section" id="partnership">
     <h3>Submit Partnership Request</h3>
     <form method="post" action="">
-        <!-- Partner Name (Institution entered by the artist) -->
+        
         <label for="partner_name">Partner Name (Institution):</label>
         <input type="text" id="partner_name" name="partner_name" required>
 
-        <!-- Partnership Start Date -->
+        
         <label for="start_date">Start Date:</label>
         <input type="date" id="start_date" name="start_date" required>
 
         <label for="end_date">End Date:</label>
         <input type="date" id="end_date" name="end_date" required>
 
-        <!-- Partnership Description -->
+        
         <label for="description">Partnership Description:</label>
         <textarea id="description" name="description" required></textarea>
 
-        <!-- Optional field for the institution's contact information or other details -->
+        
         <label for="contact_info">Institution Contact Info:</label>
         <input type="text" id="contact_info" name="contact_info">
 
@@ -436,7 +333,7 @@ $conn->close();
 <div class="content-section" id="events">
     <h3>Events</h3>
    
-    <!-- Event Form -->
+    
     <form method="post" action="" enctype="multipart/form-data" class="event-form">
         <label for="event_name">Event Name:</label>
         <input type="text" id="event_name" name="event_name" required>
@@ -456,7 +353,7 @@ $conn->close();
         <button type="submit" name="add_event" class="btn-submit">Add Event</button>
     </form>
 
-    <!-- Events List -->
+    
     <div class="events-list">
         <h4>Your Events</h4>
         <?php if (!empty($events)): ?>
@@ -471,13 +368,13 @@ $conn->close();
                         <?php endif; ?>
                         Description: <?php echo htmlspecialchars($event['description']); ?><br>
                         
-                        <!-- Delete Event -->
+                      
                         <form method="post" action="" style="display: inline;">
                             <input type="hidden" name="event_id" value="<?php echo $event['id']; ?>">
                             <button type="submit" name="delete_event" class="btn-delete">Delete</button>
                         </form>
 
-                        <!-- Edit Event -->
+                        
                         <form method="post" action="" style="display: inline;">
                             <input type="hidden" name="event_id" value="<?php echo $event['id']; ?>">
                             <button type="submit" name="edit_event" class="btn-edit">Edit</button>
@@ -512,10 +409,10 @@ $conn->close();
         </div>
     </div>
 
-    <form method="post" action="send_message.php" id="messageForm">
+    <form method="post" action="messages.php" id="messageForm">
         <input type="hidden" id="recipientId" name="recipient_id" value="<?php echo isset($recipient_id) ? htmlspecialchars($recipient_id) : ''; ?>">
         <textarea id="message" name="message" placeholder="Type a message..." required></textarea>
-        <input type="submit" name="send_message" value="Send">
+        <input type="submit" name="messages" value="Send">
     </form>
 </div>
 

@@ -13,7 +13,7 @@ if ($conn->connect_error) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST["username"]);
     $email = trim($_POST["email"]);
-    $password = password_hash($_POST["password"], PASSWORD_DEFAULT); // Securely hash the password
+    $password = password_hash($_POST["password"], PASSWORD_DEFAULT);
 
     $sql = "INSERT INTO admins (username, email, password) VALUES (?, ?, ?)";
     $stmt = $conn->prepare($sql);
